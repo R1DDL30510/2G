@@ -4,9 +4,15 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
-$composeFile = Join-Path $root '..\infra\compose\docker-compose.yml'
-Push-Location (Join-Path $root '..')
+$repoRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+$composeFile = Join-Path $repoRoot 'infra\compose\docker-compose.yml'
+
+if (-not (Test-Path $composeFile)) {
+    Write-Error "Compose file not found at: $composeFile`nEnsure you are using the repo at $repoRoot"
+    exit 1
+}
+
+Push-Location $repoRoot
 try {
     switch ($Action) {
         'up' { docker compose -f $composeFile up -d }
