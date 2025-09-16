@@ -1,0 +1,1 @@
+Summarize the following product changelog into three concise bullet points that highlight the most user-visible improvements. Include one suggestion for a follow-up experiment that could extend the release. Use friendly, technical language.
