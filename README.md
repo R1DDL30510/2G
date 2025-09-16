@@ -10,22 +10,31 @@ This repository scaffolds a local, open-source AI stack using Docker Compose. It
 Optional: Python 3.10+, Node.js LTS, PowerShell 7 for scripts.
 
 ## Quickstart
-1. Initialize the workspace: `./scripts/bootstrap.ps1 -PromptSecrets` (creates `.env`, `data/`, and `models/`, and lets you confirm CLI keys interactively).
-2. Adjust `.env` if you need different ports or storage paths.
+1. Initialize the workspace: `./scripts/bootstrap.ps1 -PromptSecrets` (creates `.env`, `data/`, and `models/`, and lets you confirm CLI keys interactively). Running `./scripts/bootstrap.ps1` without switches now opens an interactive menu so you can trigger health checks and benchmarks from one place.
+2. Adjust `.env` if you need different ports or storage paths. Benchmark defaults (model, prompt, evidence directory) are stored in `.env` under the *Diagnostics and benchmarking* section.
 3. Start the stack: `./scripts/compose.ps1 up` (PowerShell).
 4. Open WebUI: http://localhost:3000 (connects to local Ollama at http://localhost:11434).
 
+For automation pipelines that must avoid prompts, call `./scripts/bootstrap.ps1 -NoMenu` to skip the interactive menu once provisioning is complete.
+
 ## Validation & Health Checks
-- Generate a host environment fingerprint with `./scripts/bootstrap.ps1 -Report` (writes `docs/ENVIRONMENT.md`).
+- Generate a host environment fingerprint with `./scripts/bootstrap.ps1 -Report` (writes `docs/ENVIRONMENT.md` **and** archives the same output under `docs/evidence/environment/`). The report now checks for `curl`, `pytest`, `nvidia-smi`, and `ollama` in addition to the original tooling list.
+- Launch the interactive diagnostics menu explicitly with `./scripts/bootstrap.ps1 -Menu`. The menu exposes GPU evaluation, host checks, and the imported Clean repository utilities.
 - Run a guarded evaluation sweep: `./scripts/context-sweep.ps1 -CpuOnly -Safe -WriteReport` (outputs `docs/CONTEXT_RESULTS_*.md`).
 - Tail combined service logs: `./scripts/compose.ps1 logs`.
 
 The compose stack is pinned to `ollama/ollama:0.3.14`, `ghcr.io/open-webui/open-webui:v0.3.7`, and `qdrant/qdrant:v1.15.4`. Update the tags in `infra/compose/docker-compose.yml` after validating new releases.
 
+## Diagnostics & Evidence
+- GPU evaluation and host health snapshots initiated from the bootstrap menu are saved in timestamped folders under `docs/evidence/`.
+- `scripts/clean/capture_state.ps1` mirrors the Clean repository tooling: it captures `nvidia-smi` summaries, Ollama inventory, and optional Docker metadata to `docs/evidence/state/<timestamp>/`.
+- `scripts/clean/bench_ollama.ps1` runs repeatable latency and throughput measurements against the model defined in `.env` (default `llama3.1:8b`) using the prompt stored at `docs/prompts/bench-default.txt`. Results land in `docs/evidence/benchmarks/` as Markdown + JSON artifacts.
+- To change evidence destinations, adjust `EVIDENCE_ROOT` inside `.env`; all diagnostics respect this path.
+
 ## Codex CLI Integration
 - The Codex CLI expects an API key even when proxying to local Ollama. `./scripts/bootstrap.ps1` ensures `.env` contains `OLLAMA_API_KEY=ollama-local`; rerun with `-PromptSecrets` or edit `.env` to change it.
 - Export `OLLAMA_API_KEY` from `.env` before invoking the CLI so requests succeed without breaking automation flows.
-- The bootstrap script also warns when the `codex` executable is missing, highlighting prerequisites before you start compose operations.
+- The bootstrap script also warns when the `codex` executable or other optional dependencies (e.g., `curl`) are missing, highlighting prerequisites before you start compose operations.
 
 ## Components
 - Ollama (`ollama/ollama:0.3.14`): Local LLM runtime and model manager
@@ -46,5 +55,3 @@ See `docs/ARCHITECTURE.md` for details.
 - `docs/CONTEXT_RESULTS_*.md`: Historical context sweep outcomes.
 - `docs/STACK_STATUS_2025-09-16.md`: Snapshot of available tooling, outstanding gaps, and next validation actions.
 - `docs/ENVIRONMENT.md`: Generated host environment fingerprint (regenerate after host changes).
-
-
