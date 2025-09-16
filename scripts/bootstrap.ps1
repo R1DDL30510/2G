@@ -1,11 +1,74 @@
 param(
-    [switch]$Report
+    [switch]$Report,
+    [switch]$PromptSecrets
 )
 
 $ErrorActionPreference = 'SilentlyContinue'
 $root = Split-Path -Parent $MyInvocation.MyCommand.Path | Split-Path -Parent
 
 function Detect($cmd,$args){ try{ $o = & $cmd $args 2>$null; if($LASTEXITCODE -eq 0){ return ($o | Select-Object -First 1) } } catch{} return $null }
+
+function Ensure-EnvEntry {
+    param(
+        [string]$Path,
+        [string]$Key,
+        [string]$DefaultValue,
+        [string]$Comment,
+        [switch]$PromptValue
+    )
+
+    if (-not (Test-Path $Path)) { return $null }
+
+    $lines = @(Get-Content -Path $Path)
+    $index = $null
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        if ($lines[$i] -match ("^\s*{0}=" -f [regex]::Escape($Key))) {
+            $index = $i
+            break
+        }
+    }
+
+    if ($null -eq $index) {
+        if ($Comment) {
+            Add-Content -Path $Path -Value ("# " + $Comment)
+        }
+        Add-Content -Path $Path -Value ("$Key=$DefaultValue")
+        Write-Output ("Added {0} to .env (default applied)." -f $Key)
+        return $DefaultValue
+    }
+
+    $parts = $lines[$index].Split('=', 2)
+    $currentValue = if ($parts.Length -gt 1) { $parts[1] } else { '' }
+
+    $valueToSet = $currentValue
+    $needsWrite = $false
+
+    if (-not $currentValue.Trim()) {
+        $valueToSet = $DefaultValue
+        if ($PromptValue.IsPresent) {
+            $input = Read-Host -Prompt ("Value for {0} (Enter to keep default '{1}')" -f $Key, $DefaultValue)
+            if ($input) {
+                $valueToSet = $input
+            }
+        }
+        $needsWrite = $true
+    }
+    elseif ($PromptValue.IsPresent) {
+        $input = Read-Host -Prompt ("Update {0}? Current value '{1}' (Enter to keep)" -f $Key, $currentValue)
+        if ($input) {
+            $valueToSet = $input
+            $needsWrite = $true
+        }
+    }
+
+    if ($needsWrite) {
+        $lines[$index] = "$Key=$valueToSet"
+        Set-Content -Path $Path -Value $lines -Encoding UTF8
+        Write-Output ("Updated {0} in .env." -f $Key)
+    }
+
+    return $valueToSet
+}
 
 if ($Report) {
     $envPath = Join-Path $root 'docs/ENVIRONMENT.md'
@@ -44,7 +107,32 @@ if ((Test-Path $envSample) -and -not (Test-Path $envLocal)) {
     Write-Output "Created .env from .env.example"
 }
 
+# Ensure mandatory env entries exist
+$envKey = Ensure-EnvEntry -Path $envLocal -Key 'OLLAMA_API_KEY' -DefaultValue 'ollama-local' -Comment 'Dummy key required by Codex CLI workflows when proxying to local Ollama. Replace with a real token if bridging to remote services.' -PromptValue:$PromptSecrets
+if (-not $envKey) {
+    Write-Warning 'Unable to verify OLLAMA_API_KEY in .env. Ensure the file exists and rerun bootstrap.'
+}
+
 # Ensure directories
 foreach($d in @('data','models')){ $p = Join-Path $root $d; if (-not (Test-Path $p)) { New-Item -Path $p -ItemType Directory | Out-Null } }
+
+# Surface dependency status to catch missing tooling early
+$dependencyChecks = @(
+    @{ Name='Docker'; Cmd='docker'; Args='--version'; Mandatory=$true },
+    @{ Name='Codex CLI'; Cmd='codex'; Args='--version'; Mandatory=$false }
+)
+foreach($check in $dependencyChecks){
+    $result = Detect $check.Cmd $check.Args
+    if ($result) {
+        Write-Output ("Detected {0}: {1}" -f $check.Name, $result.Trim())
+    }
+    elseif ($check.Mandatory) {
+        Write-Warning ("{0} not detected. Install it before running compose operations." -f $check.Name)
+    }
+    else {
+        Write-Warning ("Optional tool missing: {0}. Install to enable Codex CLI workflows." -f $check.Name)
+    }
+}
+
 Write-Output "Bootstrap complete. Use scripts/compose.ps1 to manage the stack."
 
