@@ -10,9 +10,15 @@ This repository scaffolds a local, open-source AI stack using Docker Compose. It
 Optional: Python 3.10+, Node.js LTS, PowerShell 7 for scripts.
 
 ## Quickstart
-1) Copy `.env.example` to `.env` and adjust ports/paths.
-2) Start the stack: `./scripts/compose.ps1 up` (PowerShell).
-3) Open WebUI: http://localhost:3000 (connects to local Ollama at http://localhost:11434).
+1. Initialize the workspace: `./scripts/bootstrap.ps1` (creates `.env`, `data/`, and `models/`).
+2. Adjust `.env` if you need different ports or storage paths.
+3. Start the stack: `./scripts/compose.ps1 up` (PowerShell).
+4. Open WebUI: http://localhost:3000 (connects to local Ollama at http://localhost:11434).
+
+## Validation & Health Checks
+- Generate a host environment fingerprint with `./scripts/bootstrap.ps1 -Report` (writes `docs/ENVIRONMENT.md`).
+- Run a guarded evaluation sweep: `./scripts/context-sweep.ps1 -CpuOnly -Safe -WriteReport` (outputs `docs/CONTEXT_RESULTS_*.md`).
+- Tail combined service logs: `./scripts/compose.ps1 logs`.
 
 The compose stack is pinned to `ollama/ollama:0.3.14`, `ghcr.io/open-webui/open-webui:v0.3.7`, and `qdrant/qdrant:v1.15.4`. Update the tags in `infra/compose/docker-compose.yml` after validating new releases.
 
@@ -27,5 +33,12 @@ See `docs/ARCHITECTURE.md` for details.
 - Edit compose config in `infra/compose/docker-compose.yml`.
 - Place persistent data under `data/` and models under `models/` (git-ignored).
 - Update environment report via `./scripts/bootstrap.ps1 -Report` and read `docs/ENVIRONMENT.md`.
+
+## Documentation & Reports
+- `docs/PROJECT_REPORT_2025-09-16.md`: Full operational and risk report covering stack status, tooling, and recommendations.
+- `docs/ARCHITECTURE.md`: High-level service layout and networking overview.
+- `docs/RELEASE_v2025-09-16.md`: Latest release notes and operational checklist.
+- `docs/CONTEXT_RESULTS_*.md`: Historical context sweep outcomes.
+- `docs/ENVIRONMENT.md`: Generated host environment fingerprint (regenerate after host changes).
 
 
