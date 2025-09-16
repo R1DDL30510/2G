@@ -1,26 +1,20 @@
-version: "3.9"
 services:
   ollama:
-    image: ollama/ollama:latest
+    image: ollama/ollama:0.3.14
     restart: unless-stopped
     ports:
       - "${OLLAMA_PORT:-11434}:11434"
     volumes:
-      - ${MODELS_DIR:-./models}:/root/.ollama
+      - ${MODELS_DIR:-../../models}:/root/.ollama
+      - ../../modelfiles:/modelfiles:ro
     environment:
       - OLLAMA_HOST=0.0.0.0
       - NVIDIA_VISIBLE_DEVICES=all
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: all
-              capabilities: [gpu]
+    gpus: all
 
   open-webui:
-    image: ghcr.io/open-webui/open-webui:main
+    image: ghcr.io/open-webui/open-webui:v0.3.7
     restart: unless-stopped
     depends_on:
       - ollama
@@ -30,14 +24,14 @@ services:
       - OLLAMA_BASE_URL=http://ollama:11434
       - WEBUI_AUTH=${OPENWEBUI_AUTH:-false}
     volumes:
-      - ${DATA_DIR:-./data}/open-webui:/app/backend/data
+      - ${DATA_DIR:-../../data}/open-webui:/app/backend/data
 
   qdrant:
-    image: qdrant/qdrant:latest
+    image: qdrant/qdrant:v1.15.4
     restart: unless-stopped
     ports:
       - "${QDRANT_PORT:-6333}:6333"
     volumes:
-      - ${DATA_DIR:-./data}/qdrant:/qdrant/storage
+      - ${DATA_DIR:-../../data}/qdrant:/qdrant/storage
 
 volumes: {}

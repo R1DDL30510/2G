@@ -1,5 +1,5 @@
 param(
-  [ValidateSet('pull','list','run','show')]
+  [ValidateSet('pull','list','run','show','create','create-all')]
   [string]$Action = 'list',
   [string]$Model,
   [string]$Prompt
@@ -25,6 +25,22 @@ switch ($Action) {
     $id = GetOllamaId
     docker exec -i $id ollama pull $Model
   }
+  'create' {
+    if (-not $Model) { throw 'Specify -Model name to create (e.g., llama31-8b-gpu)' }
+    $id = GetOllamaId
+    $file = "/modelfiles/$Model.Modelfile"
+    docker exec -i $id sh -lc "test -f $file" 2>$null
+    if ($LASTEXITCODE -ne 0) { throw "Modelfile not found in container: $file" }
+    docker exec -i $id ollama create $Model -f $file
+  }
+  'create-all' {
+    $id = GetOllamaId
+    $targets = @('llama31-8b-c4k','llama31-8b-c8k','llama31-8b-c16k','llama31-8b-c32k')
+    foreach($t in $targets){
+      $file = "/modelfiles/$t.Modelfile"
+      docker exec -i $id sh -lc "test -f $file && ollama create $t -f $file || echo 'skip: missing ' $file"
+    }
+  }
   'run' {
     if (-not $Model) { throw 'Specify -Model' }
     $id = GetOllamaId
@@ -44,4 +60,3 @@ switch ($Action) {
     docker exec -i $id ollama show $Model
   }
 }
-

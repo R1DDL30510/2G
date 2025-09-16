@@ -1,9 +1,9 @@
 # Architecture Overview
 
 Components (all local, open-source):
-- Ollama (`ollama/ollama`): pulls and runs LLMs locally.
-- Open WebUI (`ghcr.io/open-webui/open-webui`): chat UI connected to Ollama.
-- Qdrant (`qdrant/qdrant`): vector database for embeddings/RAG.
+- Ollama (`ollama/ollama:0.3.14`): pulls and runs LLMs locally.
+- Open WebUI (`ghcr.io/open-webui/open-webui:v0.3.7`): chat UI connected to Ollama.
+- Qdrant (`qdrant/qdrant:v1.15.4`): vector database for embeddings/RAG.
 
 Data & Models
 - `models/`: cache for Ollama models (large, not tracked).
@@ -14,5 +14,6 @@ Networking
 - Ollama: http://localhost:11434
 - Qdrant API: http://localhost:6333
 
-Customize by editing `infra/compose/docker-compose.yml` and `.env`.
+Images pinned in `infra/compose/docker-compose.yml` keep the stack stable; update after validating upstream releases.
 
+Customize by editing `infra/compose/docker-compose.yml` and `.env`.

@@ -1,0 +1,10 @@
+FROM llama3.1:8b
+
+# Offload as many layers as possible to GPU
+PARAMETER num_gpu 999
+
+# Prefer the RTX 3060 (GPU index 1)
+PARAMETER main_gpu 1
+
+# Optional: context window
+PARAMETER num_ctx 4096

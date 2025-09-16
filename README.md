@@ -14,10 +14,12 @@ Optional: Python 3.10+, Node.js LTS, PowerShell 7 for scripts.
 2) Start the stack: `./scripts/compose.ps1 up` (PowerShell).
 3) Open WebUI: http://localhost:3000 (connects to local Ollama at http://localhost:11434).
 
+The compose stack is pinned to `ollama/ollama:0.3.14`, `ghcr.io/open-webui/open-webui:v0.3.7`, and `qdrant/qdrant:v1.15.4`. Update the tags in `infra/compose/docker-compose.yml` after validating new releases.
+
 ## Components
-- Ollama: Local LLM runtime and model manager
-- Open WebUI: Web interface for chat and orchestration
-- Qdrant: Vector database for embeddings/RAG
+- Ollama (`ollama/ollama:0.3.14`): Local LLM runtime and model manager
+- Open WebUI (`ghcr.io/open-webui/open-webui:v0.3.7`): Web interface for chat and orchestration
+- Qdrant (`qdrant/qdrant:v1.15.4`): Vector database for embeddings/RAG
 
 See `docs/ARCHITECTURE.md` for details.
 
@@ -25,4 +27,5 @@ See `docs/ARCHITECTURE.md` for details.
 - Edit compose config in `infra/compose/docker-compose.yml`.
 - Place persistent data under `data/` and models under `models/` (git-ignored).
 - Update environment report via `./scripts/bootstrap.ps1 -Report` and read `docs/ENVIRONMENT.md`.
+
 
