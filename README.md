@@ -7,20 +7,37 @@ This repository scaffolds a local, open-source AI stack using Docker Compose. It
 - Docker Desktop (with "Use the WSL 2 based engine" enabled)
 - Git
 
-Optional: Python 3.10+, Node.js LTS, PowerShell 7 for scripts.
+Optional: Python 3.10+, Node.js LTS, PowerShell 7 for scripts (Bash is now
+supported for bootstrap-only flows).
 
 ## Quickstart
-1. Initialize the workspace: `./scripts/bootstrap.ps1` (creates `.env`, `data/`, and `models/`).
+1. Initialize the workspace:
+   - Bash environments (Linux/macOS, WSL, CI): `./scripts/bootstrap.sh --prompt-secrets`
+   - PowerShell 7+: `./scripts/bootstrap.ps1 -PromptSecrets`
+   Both commands create `.env`, ensure `data/` and `models/` exist, and let you
+   confirm CLI keys interactively.
 2. Adjust `.env` if you need different ports or storage paths.
-3. Start the stack: `./scripts/compose.ps1 up` (PowerShell).
+3. Start the stack: `./scripts/compose.ps1 up` (PowerShell). Without PowerShell,
+   invoke Docker directly: `docker compose -f infra/compose/docker-compose.yml up -d`.
 4. Open WebUI: http://localhost:3000 (connects to local Ollama at http://localhost:11434).
 
 ## Validation & Health Checks
-- Generate a host environment fingerprint with `./scripts/bootstrap.ps1 -Report` (writes `docs/ENVIRONMENT.md`).
+- Generate a host environment fingerprint with `./scripts/bootstrap.ps1 -Report`
+  or `./scripts/bootstrap.sh --report` (writes `docs/ENVIRONMENT.md`).
 - Run a guarded evaluation sweep: `./scripts/context-sweep.ps1 -CpuOnly -Safe -WriteReport` (outputs `docs/CONTEXT_RESULTS_*.md`).
 - Tail combined service logs: `./scripts/compose.ps1 logs`.
 
 The compose stack is pinned to `ollama/ollama:0.3.14`, `ghcr.io/open-webui/open-webui:v0.3.7`, and `qdrant/qdrant:v1.15.4`. Update the tags in `infra/compose/docker-compose.yml` after validating new releases.
+
+## Codex CLI Integration
+- The Codex CLI expects an API key even when proxying to local Ollama. The
+  bootstrap scripts ensure `.env` contains `OLLAMA_API_KEY=ollama-local`; rerun
+  with `-PromptSecrets`/`--prompt-secrets` or edit `.env` to change it.
+- Export `OLLAMA_API_KEY` from `.env` before invoking the CLI so requests succeed without breaking automation flows.
+- The bootstrap scripts warn when the `codex` executable is missing, highlighting
+  prerequisites before you start compose operations. Use
+  `./scripts/bootstrap.sh --check` on hosts without PowerShell to verify
+  dependencies without mutating the workspace.
 
 ## Components
 - Ollama (`ollama/ollama:0.3.14`): Local LLM runtime and model manager
@@ -39,6 +56,7 @@ See `docs/ARCHITECTURE.md` for details.
 - `docs/ARCHITECTURE.md`: High-level service layout and networking overview.
 - `docs/RELEASE_v2025-09-16.md`: Latest release notes and operational checklist.
 - `docs/CONTEXT_RESULTS_*.md`: Historical context sweep outcomes.
+- `docs/STACK_STATUS_2025-09-16.md`: Snapshot of available tooling, outstanding gaps, and next validation actions.
 - `docs/ENVIRONMENT.md`: Generated host environment fingerprint (regenerate after host changes).
 
 
