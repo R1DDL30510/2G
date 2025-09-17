@@ -1,0 +1,6 @@
+﻿unknown shorthand flag: 'T' in -T
+
+Usage:  docker exec [OPTIONS] CONTAINER COMMAND [ARG...]
+
+Run 'docker exec --help' for more information
+

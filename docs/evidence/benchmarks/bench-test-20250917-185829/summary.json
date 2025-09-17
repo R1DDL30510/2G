@@ -1,0 +1,25 @@
+﻿{
+    "model":  "test",
+    "prompt":  "C:\\Users\\akrin\\OneDrive\\Desktop\\2\\docs\\prompts\\bench-default.txt",
+    "iterations":  1,
+    "warmup":  false,
+    "average_wall_ms":  169.07,
+    "min_wall_ms":  169.07,
+    "max_wall_ms":  169.07,
+    "average_tokens_per_sec":  0,
+    "results":  [
+                    {
+                        "Iteration":  1,
+                        "ExitCode":  125,
+                        "WallMs":  169.07,
+                        "ResponseLength":  0,
+                        "EvalCount":  0,
+                        "EvalDurationNs":  0,
+                        "PromptEvalCount":  0,
+                        "PromptEvalDurationNs":  0,
+                        "TotalDurationNs":  0,
+                        "TokensPerSecond":  0,
+                        "StdErr":  "unknown shorthand flag: \u0027T\u0027 in -T\n\nUsage:  docker exec [OPTIONS] CONTAINER COMMAND [ARG...]\n\nRun \u0027docker exec --help\u0027 for more information\n"
+                    }
+                ]
+}

@@ -1,4 +1,4 @@
-# Local AI Infrastructure (Cloud-Independent, OSS)
+﻿# Local AI Infrastructure (Cloud-Independent, OSS)
 
 This repository scaffolds a local, open-source AI stack using Docker Compose. It runs fully on your machine with no cloud dependency.
 
@@ -23,6 +23,7 @@ For automation pipelines that must avoid prompts, call `./scripts/bootstrap.ps1 
 - Run a guarded evaluation sweep with GPU validation: `./scripts/context-sweep.ps1 -Safe -WriteReport` (add `-CpuOnly` only when CUDA resources are unavailable to keep evidence flowing into `docs/CONTEXT_RESULTS_*.md`).
 - Tail combined service logs: `./scripts/compose.ps1 logs`.
 - Run automated smoke tests locally with `pip install -r requirements-dev.txt && pytest`. These checks parse `infra/compose/docker-compose.yml`, verify Modelfiles, and validate `.env.example` defaults. The same suite executes in CI via `.github/workflows/smoke-tests.yml`.
+- GitHub Actions also boots the stack with the CPU override compose file (`infra/compose/docker-compose.ci.yml`), runs Pester + context sweeps, and captures host state for reproducible evidence.
 
 The compose stack is pinned to `ollama/ollama:0.3.14`, `ghcr.io/open-webui/open-webui:v0.3.7`, and `qdrant/qdrant:v1.15.4`. Update the tags in `infra/compose/docker-compose.yml` after validating new releases.
 
@@ -57,3 +58,16 @@ See `docs/ARCHITECTURE.md` for details.
 - `docs/STACK_STATUS_2025-09-16.md`: Snapshot of available tooling, outstanding gaps, and next validation actions.
 - `docs/ENVIRONMENT.md`: Generated host environment fingerprint (regenerate after host changes).
 https://vscode.dev/tunnel/g1mvp/c:/Users/akrin/OneDrive/Desktop/2
+### GPU targeting
+- The GPU-tuned Modelfile now defaults to `main_gpu 0` so single-GPU hosts can create it without edits.
+- Override the GPU index when needed: `./scripts/model.ps1 create -Model llama31-8b-gpu -MainGpu 1` or `./scripts/model.ps1 create-all -MainGpu 1`.
+- Context variants ignore the override, but the helper script applies it when the GPU profile is built.
+
+### Context sweeps
+- `./scripts/context-sweep.ps1` now accepts `-Profile` or honours `CONTEXT_SWEEP_PROFILE` from `.env` to switch between long-context (`llama31-long`), balanced (`qwen3-balanced`), and CPU baselines.
+- Each profile pins `num_gpu=1` to avoid dual-GPU brownouts; safe mode further trims token targets for 32k runs.
+- See `docs/CONTEXT_PROFILES.md` for guidance on alternative Ollama models (llama3.2:3b-instruct, phi3.5:mini, mistral-nemo) and how to register custom profiles.
+
+
+
+

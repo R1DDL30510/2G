@@ -1,4 +1,4 @@
-name: smoke-tests
+﻿name: smoke-tests
 
 on:
   push:
@@ -21,5 +21,47 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements-dev.txt
 
-      - name: Run smoke tests
+      - name: Prepare environment file
+        run: cp .env.example .env
+
+      - name: Ensure evidence and volume directories exist
+        run: |
+          mkdir -p data/open-webui data/qdrant models docs/evidence
+
+      - name: Run Python smoke tests
         run: pytest --maxfail=1 --disable-warnings -q
+
+      - name: Run Pester tests
+        shell: pwsh
+        run: |
+          Install-Module Pester -Scope CurrentUser -Force -SkipPublisherCheck
+          Invoke-Pester -Script tests/pester -Output Detailed
+
+      - name: Bring up compose stack (CPU override)
+        run: docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.ci.yml up -d
+
+      - name: Probe service health
+        run: |
+          echo "Waiting for services to initialise"
+          sleep 20
+          curl --fail http://localhost:11434/api/version
+          curl --fail http://localhost:6333/collections
+          curl --fail http://localhost:3000 | head -n 1
+
+      - name: Run context sweep (safe CPU profile)
+        shell: pwsh
+        run: ./scripts/context-sweep.ps1 -Safe -CpuOnly -Profile cpu-baseline -WriteReport
+      - name: Capture host state snapshot
+        shell: pwsh
+        run: ./scripts/clean/capture_state.ps1 -OutputRoot docs/evidence/ci
+
+      - name: Dump compose logs on failure
+        if: failure()
+        run: docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.ci.yml logs
+
+      - name: Tear down compose stack
+        if: always()
+        run: docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.ci.yml down -v
+
+      - name: Assert .env matches template
+        run: diff <(grep -v '^#' .env.example | sort) <(grep -v '^#' .env | sort)

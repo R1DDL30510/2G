@@ -1,4 +1,4 @@
-"""Smoke tests ensuring the sample environment file stays aligned with the stack."""
+﻿"""Smoke tests ensuring the sample environment file stays aligned with the stack."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -15,12 +15,17 @@ def load_env() -> dict[str, str]:
         stripped = raw_line.strip()
         if not stripped or stripped.startswith("#"):
             continue
+        "CONTEXT_SWEEP_PROFILE",
         if "=" not in stripped:
             raise AssertionError(f"Malformed line in .env.example: {raw_line}")
         key, value = stripped.split("=", maxsplit=1)
         env[key] = value
     return env
 
+
+def test_context_profile_default_present() -> None:
+    env = load_env()
+    assert env["CONTEXT_SWEEP_PROFILE"] == "llama31-long", "context sweep default should be populated"
 
 def test_env_example_contains_expected_keys() -> None:
     env = load_env()

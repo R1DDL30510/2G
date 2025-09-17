@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$Model,
     [string]$PromptPath,
     [int]$Iterations = 3,
@@ -8,7 +8,8 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$repoRoot = Split-Path -Parent $scriptRoot
+$repoRoot = Split-Path -Parent (Split-Path -Parent $scriptRoot)
+$composeFile = Join-Path $repoRoot 'infra\compose\docker-compose.yml'
 
 function Ensure-Directory {
     param([Parameter(Mandatory = $true)][string]$Path)
@@ -42,6 +43,15 @@ function Resolve-PathFromRepo {
     return Join-Path $repoRoot $Path
 }
 
+function Get-OllamaContainerId {
+    $id = docker compose -f $composeFile ps -q ollama
+    if (-not $id) {
+        throw 'Ollama container not found. Start the stack with ./scripts/compose.ps1 up.'
+    }
+    return $id
+}
+
+
 function Invoke-OllamaJsonRun {
     param(
         [string]$ModelName,
@@ -51,9 +61,11 @@ function Invoke-OllamaJsonRun {
         [switch]$PersistArtifacts
     )
 
+    $containerId = Get-OllamaContainerId
+
     $psi = New-Object System.Diagnostics.ProcessStartInfo
-    $psi.FileName = 'ollama'
-    $psi.Arguments = "run $ModelName --json"
+    $psi.FileName = 'docker'
+    $psi.Arguments = "exec -i -T $containerId ollama run $ModelName --json"
     $psi.RedirectStandardInput = $true
     $psi.RedirectStandardOutput = $true
     $psi.RedirectStandardError = $true
@@ -67,7 +79,7 @@ function Invoke-OllamaJsonRun {
         $process.Start() | Out-Null
     }
     catch {
-        throw "Failed to start ollama process: $($_.Exception.Message)"
+        throw "Failed to execute docker exec for Ollama: $($_.Exception.Message)"
     }
 
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()

@@ -1,4 +1,4 @@
-param(
+﻿param(
     [switch]$Report,
     [switch]$PromptSecrets,
     [switch]$Menu,
@@ -68,6 +68,7 @@ function Get-EnvValue {
 
 function Get-EvidenceRoot {
     $configured = Get-EnvValue -Key 'EVIDENCE_ROOT'
+    $null = Ensure-EnvEntry -Path $envLocal -Key 'CONTEXT_SWEEP_PROFILE' -DefaultValue 'llama31-long' -Comment 'Default context sweep profile (llama31-long, qwen3-balanced, cpu-baseline).' -PromptValue:$PromptSecrets
     if ($configured) {
         if ([System.IO.Path]::IsPathRooted($configured)) {
             return $configured
@@ -242,18 +243,18 @@ function Invoke-EnvironmentReport {
     $reportLines += ''
 
     $probes = @(
-        Invoke-VersionCheck -Name 'Git' -Command 'git' -Arguments @('--version') -Mandatory,
-        Invoke-VersionCheck -Name 'Docker' -Command 'docker' -Arguments @('--version') -Mandatory,
-        Invoke-VersionCheck -Name 'Docker Compose' -Command 'docker' -Arguments @('compose', 'version') -Mandatory,
-        Invoke-VersionCheck -Name 'WSL' -Command 'wsl' -Arguments @('--status'),
-        Invoke-VersionCheck -Name 'Python' -Command 'python' -Arguments @('--version'),
-        Invoke-VersionCheck -Name 'Node' -Command 'node' -Arguments @('-v'),
-        Invoke-VersionCheck -Name 'npm' -Command 'npm' -Arguments @('-v'),
-        Invoke-VersionCheck -Name '.NET' -Command 'dotnet' -Arguments @('--info'),
-        Invoke-VersionCheck -Name 'curl' -Command 'curl' -Arguments @('--version'),
-        Invoke-VersionCheck -Name 'pytest' -Command 'pytest' -Arguments @('--version'),
-        Invoke-VersionCheck -Name 'nvidia-smi' -Command 'nvidia-smi' -Arguments @('--query-gpu=name,memory.total', '--format=csv,noheader'),
-        Invoke-VersionCheck -Name 'ollama' -Command 'ollama' -Arguments @('--version'),
+        Invoke-VersionCheck -Name 'Git' -Command 'git' -Arguments @('--version') -Mandatory
+        Invoke-VersionCheck -Name 'Docker' -Command 'docker' -Arguments @('--version') -Mandatory
+        Invoke-VersionCheck -Name 'Docker Compose' -Command 'docker' -Arguments @('compose', 'version') -Mandatory
+        Invoke-VersionCheck -Name 'WSL' -Command 'wsl' -Arguments @('--status')
+        Invoke-VersionCheck -Name 'Python' -Command 'python' -Arguments @('--version')
+        Invoke-VersionCheck -Name 'Node' -Command 'node' -Arguments @('-v')
+        Invoke-VersionCheck -Name 'npm' -Command 'npm' -Arguments @('-v')
+        Invoke-VersionCheck -Name '.NET' -Command 'dotnet' -Arguments @('--info')
+        Invoke-VersionCheck -Name 'curl' -Command 'curl' -Arguments @('--version')
+        Invoke-VersionCheck -Name 'pytest' -Command 'pytest' -Arguments @('--version')
+        Invoke-VersionCheck -Name 'nvidia-smi' -Command 'nvidia-smi' -Arguments @('--query-gpu=name,memory.total', '--format=csv,noheader')
+        Invoke-VersionCheck -Name 'ollama' -Command 'ollama' -Arguments @('--version')
         Invoke-VersionCheck -Name 'PowerShell (pwsh)' -Command 'pwsh' -Arguments @('--version')
     )
 
@@ -455,4 +456,5 @@ if ($shouldLaunchMenu) {
 else {
     Write-Output 'Bootstrap complete. Use scripts/compose.ps1 to manage the stack.'
 }
+
 

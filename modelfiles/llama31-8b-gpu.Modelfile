@@ -3,8 +3,10 @@ FROM llama3.1:8b
 # Offload as many layers as possible to GPU
 PARAMETER num_gpu 999
 
-# Prefer the RTX 3060 (GPU index 1)
-PARAMETER main_gpu 1
+# Default to GPU index 0; override via scripts/model.ps1 -MainGpu
+PARAMETER main_gpu 0
 
 # Optional: context window
 PARAMETER num_ctx 4096
+
+
