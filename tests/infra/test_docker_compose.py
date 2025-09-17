@@ -1,0 +1,130 @@
+"""Smoke tests for docker-compose configuration integrity without requiring PyYAML."""
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Dict, List
+
+
+ROOT = Path(__file__).resolve().parents[2]
+COMPOSE_PATH = ROOT / "infra" / "compose" / "docker-compose.yml"
+
+
+def parse_services() -> Dict[str, Dict[str, object]]:
+    """Parse the compose file using indentation-aware heuristics."""
+    lines = COMPOSE_PATH.read_text(encoding="utf-8").splitlines()
+    services: Dict[str, Dict[str, object]] = {}
+    in_services = False
+    current_service: str | None = None
+    current_list_key: str | None = None
+
+    for raw in lines:
+        stripped_line = raw.strip()
+        if not stripped_line or stripped_line.startswith("#"):
+            continue
+
+        if stripped_line == "services:":
+            in_services = True
+            current_service = None
+            current_list_key = None
+            continue
+
+        if not in_services:
+            continue
+
+        indent = len(raw) - len(raw.lstrip(" "))
+
+        if indent == 2 and stripped_line.endswith(":"):
+            current_service = stripped_line[:-1]
+            services[current_service] = {}
+            current_list_key = None
+            continue
+
+        if indent <= 2:
+            in_services = False
+            current_service = None
+            current_list_key = None
+            continue
+
+        if current_service is None:
+            continue
+
+        if indent == 4 and ":" in stripped_line:
+            key, value = stripped_line.split(":", 1)
+            key = key.strip()
+            value = value.strip()
+            if value.startswith('"') and value.endswith('"'):
+                value = value[1:-1]
+
+            if value:
+                services[current_service][key] = value
+                current_list_key = None
+            else:
+                services[current_service][key] = []
+                current_list_key = key
+            continue
+
+        if indent >= 6 and stripped_line.startswith("-") and current_list_key:
+            entry = stripped_line[1:].strip()
+            services[current_service].setdefault(current_list_key, []).append(entry)
+
+    return services
+
+
+SERVICES_CACHE = parse_services()
+
+
+def test_compose_declares_expected_services() -> None:
+    expected_services = {"ollama", "open-webui", "qdrant"}
+    missing = expected_services.difference(SERVICES_CACHE)
+    assert not missing, f"missing required services: {sorted(missing)}"
+
+
+
+def test_images_are_pinned_and_not_latest() -> None:
+    for name, definition in SERVICES_CACHE.items():
+        image = definition.get("image")
+        assert isinstance(image, str) and image, f"{name} must declare an image"
+        assert ":" in image, f"{name} image must include a tag"
+        tag = image.split(":", maxsplit=1)[1]
+        assert tag and tag.lower() != "latest", f"{name} image must pin a non-latest tag"
+
+
+
+def test_open_webui_depends_on_ollama() -> None:
+    open_webui = SERVICES_CACHE["open-webui"]
+    depends = open_webui.get("depends_on", [])
+    assert "ollama" in depends, "open-webui service must depend on ollama"
+
+
+
+def test_ollama_is_gpu_enabled_and_exposes_expected_mounts() -> None:
+    ollama = SERVICES_CACHE["ollama"]
+
+    assert ollama.get("gpus") == "all", "ollama service must request GPU resources"
+
+    environment: List[str] = ollama.get("environment", [])  # type: ignore[assignment]
+    assert any(entry == "OLLAMA_HOST=0.0.0.0" for entry in environment), "OLLAMA_HOST must be bound to 0.0.0.0"
+
+    volumes: List[str] = ollama.get("volumes", [])  # type: ignore[assignment]
+    assert any("../../modelfiles" in volume for volume in volumes), "ollama volume mounts must include modelfiles"
+
+
+
+def test_open_webui_uses_expected_env_defaults() -> None:
+    open_webui = SERVICES_CACHE["open-webui"]
+
+    environment: List[str] = open_webui.get("environment", [])  # type: ignore[assignment]
+    expected_pairs = {
+        "OLLAMA_BASE_URL=http://ollama:11434",
+        "WEBUI_AUTH=${OPENWEBUI_AUTH:-false}",
+    }
+    for pair in expected_pairs:
+        assert pair in environment, f"open-webui environment missing {pair}"
+
+
+
+def test_qdrant_persists_data_volume() -> None:
+    qdrant = SERVICES_CACHE["qdrant"]
+
+    volumes: List[str] = qdrant.get("volumes", [])  # type: ignore[assignment]
+    assert any("/qdrant/storage" in volume for volume in volumes), "qdrant must persist storage volume"

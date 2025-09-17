@@ -22,6 +22,7 @@ For automation pipelines that must avoid prompts, call `./scripts/bootstrap.ps1 
 - Launch the interactive diagnostics menu explicitly with `./scripts/bootstrap.ps1 -Menu`. The menu exposes GPU evaluation, host checks, and the imported Clean repository utilities.
 - Run a guarded evaluation sweep: `./scripts/context-sweep.ps1 -CpuOnly -Safe -WriteReport` (outputs `docs/CONTEXT_RESULTS_*.md`).
 - Tail combined service logs: `./scripts/compose.ps1 logs`.
+- Run automated smoke tests locally with `pip install -r requirements-dev.txt && pytest`. These checks parse `infra/compose/docker-compose.yml`, verify Modelfiles, and validate `.env.example` defaults. The same suite executes in CI via `.github/workflows/smoke-tests.yml`.
 
 The compose stack is pinned to `ollama/ollama:0.3.14`, `ghcr.io/open-webui/open-webui:v0.3.7`, and `qdrant/qdrant:v1.15.4`. Update the tags in `infra/compose/docker-compose.yml` after validating new releases.
 
