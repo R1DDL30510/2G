@@ -1,10 +1,10 @@
-
 param(
     [switch]$WriteReport,
     [switch]$CpuOnly,
     [switch]$Safe,
     [int]$InterRunDelaySec = 5,
-    [string]$Profile
+    [string]$Profile,
+    [int]$GpuCooldownSec = 15
 )
 
 $ErrorActionPreference = 'Stop'
@@ -23,6 +23,60 @@ function Get-EnvValue {
         }
     }
     return $null
+}
+
+function Copy-Hashtable {
+    param([hashtable]$Source)
+
+    $copy = @{}
+    if ($Source) {
+        foreach ($kv in $Source.GetEnumerator()) {
+            $copy[$kv.Key] = $kv.Value
+        }
+    }
+
+    return $copy
+}
+
+function Get-GpuInventory {
+    try {
+        $raw = & nvidia-smi --query-gpu=index,name,memory.total --format=csv,noheader
+    }
+    catch {
+        Write-Verbose ("Unable to query GPUs via nvidia-smi: " + $_.Exception.Message)
+        return @()
+    }
+
+    if (-not $raw) {
+        return @()
+    }
+
+    $list = @()
+    foreach ($line in $raw) {
+        if (-not $line) { continue }
+        $parts = $line -split ','
+        if ($parts.Count -lt 2) { continue }
+
+        $index = [int]($parts[0].Trim())
+        $name = $parts[1].Trim()
+        $memGb = $null
+
+        if ($parts.Count -ge 3) {
+            $match = [regex]::Match($parts[2], '(?<value>[0-9]+)\s+MiB')
+            if ($match.Success) {
+                $memValue = [double]([int]$match.Groups['value'].Value)
+                $memGb = [math]::Round($memValue / 1024, 2)
+            }
+        }
+
+        $list += [pscustomobject]@{
+            Index = $index
+            Name = $name
+            MemoryGiB = $memGb
+        }
+    }
+
+    return $list
 }
 
 if (-not $Profile) {
@@ -58,12 +112,32 @@ if (-not $profiles.ContainsKey($Profile)) {
     throw "Unknown profile '$Profile'. Available profiles: $valid"
 }
 
-Write-Host ("Context sweep profile: {0} (safe mode: {1}; cpu only: {2})" -f $Profile, $Safe.IsPresent, $CpuOnly.IsPresent)
+$useCpuOnly = $CpuOnly.IsPresent
+$gpuInventory = @()
 
-$plan = foreach ($entry in $profiles[$Profile]) {
+if (-not $useCpuOnly) {
+    $gpuInventory = Get-GpuInventory
+    if ($gpuInventory.Count -eq 0) {
+        Write-Warning 'No NVIDIA GPUs detected. Falling back to CPU-only execution.'
+        $useCpuOnly = $true
+    } else {
+        $gpuSummary = $gpuInventory | ForEach-Object {
+            if ($_.MemoryGiB) {
+                "[{0}] {1} ({2:N1} GiB)" -f $_.Index, $_.Name, $_.MemoryGiB
+            } else {
+                "[{0}] {1}" -f $_.Index, $_.Name
+            }
+        }
+        Write-Host ("Detected {0} GPU(s): {1}" -f $gpuInventory.Count, ($gpuSummary -join '; '))
+    }
+}
+
+Write-Host ("Context sweep profile: {0} (safe mode: {1}; cpu only: {2})" -f $Profile, $Safe.IsPresent, $useCpuOnly)
+
+$planBase = foreach ($entry in $profiles[$Profile]) {
     $tokens = if ($Safe.IsPresent -and $entry.ContainsKey('TokensSafe')) { $entry.TokensSafe } else { $entry.TokensDefault }
     $timeout = if ($Safe.IsPresent -and $entry.ContainsKey('TimeoutSafe')) { $entry.TimeoutSafe } else { $entry.TimeoutDefault }
-    $options = if ($entry.ContainsKey('Options') -and $entry.Options) { $entry.Options } else { @{} }
+    $options = if ($entry.ContainsKey('Options') -and $entry.Options) { Copy-Hashtable $entry.Options } else { @{} }
 
     [pscustomobject]@{
         Model = $entry.Model
@@ -73,10 +147,53 @@ $plan = foreach ($entry in $profiles[$Profile]) {
     }
 }
 
+$plan = @()
+
+if (-not $useCpuOnly -and $gpuInventory.Count -gt 0) {
+    foreach ($gpu in $gpuInventory) {
+        foreach ($entry in $planBase) {
+            $options = Copy-Hashtable $entry.Options
+            if (-not $options.ContainsKey('NumGpu')) { $options['NumGpu'] = 1 }
+            $options['MainGpu'] = $gpu.Index
+
+            $plan += [pscustomobject]@{
+                Model = $entry.Model
+                Tokens = $entry.Tokens
+                Timeout = $entry.Timeout
+                Options = $options
+                GpuIndex = $gpu.Index
+                GpuName = $gpu.Name
+            }
+        }
+    }
+} else {
+    foreach ($entry in $planBase) {
+        $plan += [pscustomobject]@{
+            Model = $entry.Model
+            Tokens = $entry.Tokens
+            Timeout = $entry.Timeout
+            Options = Copy-Hashtable $entry.Options
+            GpuIndex = $null
+            GpuName = $null
+        }
+    }
+}
+
 $rows = @()
+$lastGpuIndex = $null
 
 foreach ($t in $plan) {
-    Write-Host ("Testing {0} @ {1} tokens (timeout {2}s){3}" -f $t.Model, $t.Tokens, $t.Timeout, $(if ($CpuOnly) { ' [CPU]' } else { '' }))
+    if (-not $useCpuOnly -and $GpuCooldownSec -gt 0) {
+        if ($null -ne $lastGpuIndex -and $t.GpuIndex -ne $lastGpuIndex) {
+            Write-Host ("Cooling down for {0}s before switching from GPU {1} to GPU {2}" -f $GpuCooldownSec, $lastGpuIndex, $t.GpuIndex)
+            Start-Sleep -Seconds $GpuCooldownSec
+        }
+    }
+
+    $deviceLabel = if ($useCpuOnly) { 'CPU' } elseif ($null -ne $t.GpuIndex) { "GPU $($t.GpuIndex)" } else { 'GPU' }
+    $deviceSuffix = if ($useCpuOnly) { ' [CPU]' } elseif ($t.GpuName) { " [GPU $($t.GpuIndex) - $($t.GpuName)]" } else { " [$deviceLabel]" }
+
+    Write-Host ("Testing {0} @ {1} tokens (timeout {2}s){3}" -f $t.Model, $t.Tokens, $t.Timeout, $deviceSuffix)
     $args = @{
         Model = $t.Model
         TokensTarget = $t.Tokens
@@ -84,7 +201,7 @@ foreach ($t in $plan) {
         TimeoutSec = $t.Timeout
     }
 
-    if ($CpuOnly) {
+    if ($useCpuOnly) {
         $args['CpuOnly'] = $true
     } else {
         if ($t.Options.ContainsKey('NumGpu')) { $args['NumGpu'] = $t.Options.NumGpu }
@@ -95,7 +212,15 @@ foreach ($t in $plan) {
 
     $out = & $eval @args 2>$null
     if (-not $out) {
-        $rows += [pscustomobject]@{ Model = $t.Model; Tokens = $t.Tokens; OK = $false; Latency = 'timeout'; Notes = 'no output' }
+        $rows += [pscustomobject]@{
+            Model = $t.Model
+            Tokens = $t.Tokens
+            OK = $false
+            Latency = 'timeout'
+            Device = $deviceLabel
+            Notes = 'no output'
+        }
+        $lastGpuIndex = $t.GpuIndex
         if ($InterRunDelaySec -gt 0) { Start-Sleep -Seconds $InterRunDelaySec }
         continue
     }
@@ -107,6 +232,7 @@ foreach ($t in $plan) {
             Tokens = $t.Tokens
             OK = [bool]::Parse($m.Groups['ok'].Value)
             Latency = $m.Groups['lat'].Value
+            Device = $deviceLabel
             Notes = ''
         }
     } else {
@@ -115,14 +241,18 @@ foreach ($t in $plan) {
             Tokens = $t.Tokens
             OK = $false
             Latency = 'n/a'
-            Notes = ($out -replace "", ' ')
+            Device = $deviceLabel
+            Notes = ($out -replace '\s+', ' ').Trim()
         }
     }
 
+    $lastGpuIndex = $t.GpuIndex
     if ($InterRunDelaySec -gt 0) { Start-Sleep -Seconds $InterRunDelaySec }
 }
 
-$rows | Format-Table -AutoSize | Out-String | Write-Output
+if ($rows.Count -gt 0) {
+    $rows | Select-Object Model, Tokens, OK, Latency, Device, Notes | Format-Table -AutoSize | Out-String | Write-Output
+}
 
 if ($WriteReport) {
     $ts = Get-Date -Format 'yyyy-MM-dd_HH-mm-ss'
@@ -130,11 +260,13 @@ if ($WriteReport) {
     $md = @()
     $md += "# Context Sweep Results ($ts)"
     $md += ''
-    $md += '| Model | Tokens | OK | Latency (s) | Profile |'
-    $md += '|-------|--------|----|-------------|---------|'
+    $md += '| Model | Tokens | OK | Latency (s) | Device | Profile | Notes |'
+    $md += '|-------|--------|----|-------------|--------|---------|-------|'
     foreach ($r in $rows) {
-        $md += "| {0} | {1} | {2} | {3} | {4} |" -f $r.Model, $r.Tokens, $r.OK, $r.Latency, $Profile
+        $noteText = if ($r.Notes) { $r.Notes } else { '' }
+        $md += "| {0} | {1} | {2} | {3} | {4} | {5} | {6} |" -f $r.Model, $r.Tokens, $r.OK, $r.Latency, $r.Device, $Profile, $noteText
     }
     Set-Content -Path $reportPath -Value ($md -join "`n") -Encoding UTF8
     Write-Output ("Wrote report: " + $reportPath)
+}
 }
