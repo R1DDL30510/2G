@@ -1,4 +1,4 @@
-﻿# Local AI Infrastructure (Cloud-Independent, OSS)
+# Local AI Infrastructure (Cloud-Independent, OSS)
 
 This repository scaffolds a local, open-source AI stack using Docker Compose. It runs fully on your machine with no cloud dependency.
 
@@ -57,7 +57,6 @@ See `docs/ARCHITECTURE.md` for details.
 - `docs/CONTEXT_RESULTS_*.md`: Historical context sweep outcomes.
 - `docs/STACK_STATUS_2025-09-16.md`: Snapshot of available tooling, outstanding gaps, and next validation actions.
 - `docs/ENVIRONMENT.md`: Generated host environment fingerprint (regenerate after host changes).
-https://vscode.dev/tunnel/g1mvp/c:/Users/akrin/OneDrive/Desktop/2
 ### GPU targeting
 - The GPU-tuned Modelfile now defaults to `main_gpu 0` so single-GPU hosts can create it without edits.
 - Override the GPU index when needed: `./scripts/model.ps1 create -Model llama31-8b-gpu -MainGpu 1` or `./scripts/model.ps1 create-all -MainGpu 1`.
