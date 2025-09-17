@@ -1,0 +1,410 @@
+param(
+    [Parameter(Position=0)]
+    [ValidateSet('create','restore','list','delete','export','import')]
+    [string]$Action = 'list',
+    
+    [string]$Name,
+    [string]$Description,
+    [string]$Path,
+    [switch]$Force,
+    [switch]$IncludeModels,
+    [switch]$Compress
+)
+
+$ErrorActionPreference = 'Stop'
+$repoRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+$checkpointDir = Join-Path $repoRoot 'checkpoints'
+$composeFile = Join-Path $repoRoot 'infra\compose\docker-compose.yml'
+
+# Ensure checkpoint directory exists
+if (-not (Test-Path $checkpointDir)) {
+    New-Item -Path $checkpointDir -ItemType Directory | Out-Null
+}
+
+function Get-Timestamp {
+    return Get-Date -Format 'yyyyMMdd_HHmmss'
+}
+
+function Get-CheckpointManifest($name) {
+    $manifestPath = Join-Path $checkpointDir "$name.manifest.json"
+    if (Test-Path $manifestPath) {
+        return Get-Content $manifestPath | ConvertFrom-Json
+    }
+    return $null
+}
+
+function Save-CheckpointManifest($name, $manifest) {
+    $manifestPath = Join-Path $checkpointDir "$name.manifest.json"
+    $manifest | ConvertTo-Json -Depth 10 | Set-Content $manifestPath -Encoding UTF8
+}
+
+function Get-ContainerVolumes {
+    $volumes = @{}
+    
+    # Get volume mappings from docker inspect
+    $containers = @('ollama', 'open-webui', 'qdrant')
+    foreach ($container in $containers) {
+        $id = docker compose -f $composeFile ps -q $container 2>$null
+        if ($id) {
+            $inspect = docker inspect $id | ConvertFrom-Json
+            $mounts = $inspect[0].Mounts | Where-Object { $_.Type -eq 'bind' }
+            $volumes[$container] = $mounts | ForEach-Object {
+                @{
+                    Source = $_.Source
+                    Destination = $_.Destination
+                    RW = $_.RW
+                }
+            }
+        }
+    }
+    return $volumes
+}
+
+function Export-DockerImages($checkpoint) {
+    $imageDir = Join-Path $checkpoint 'images'
+    New-Item -Path $imageDir -ItemType Directory -Force | Out-Null
+    
+    $images = @(
+        'ollama/ollama:0.3.14',
+        'ghcr.io/open-webui/open-webui:v0.3.7', 
+        'qdrant/qdrant:v1.15.4'
+    )
+    
+    foreach ($image in $images) {
+        $fileName = $image -replace '[:/]', '_'
+        $imagePath = Join-Path $imageDir "$fileName.tar"
+        Write-Host "Exporting image: $image"
+        docker save -o $imagePath $image
+        if ($Compress) {
+            Write-Host "Compressing $fileName.tar"
+            Compress-Archive -Path $imagePath -DestinationPath "$imagePath.zip" -Force
+            Remove-Item $imagePath
+        }
+    }
+}
+
+function Import-DockerImages($checkpoint) {
+    $imageDir = Join-Path $checkpoint 'images'
+    if (-not (Test-Path $imageDir)) {
+        Write-Warning "No images directory found in checkpoint"
+        return
+    }
+    
+    $archives = Get-ChildItem $imageDir -Filter "*.tar*"
+    foreach ($archive in $archives) {
+        $imagePath = $archive.FullName
+        if ($archive.Extension -eq '.zip') {
+            Write-Host "Decompressing $($archive.Name)"
+            $tarPath = $imagePath -replace '\.zip$', ''
+            Expand-Archive -Path $imagePath -DestinationPath $imageDir -Force
+            $imagePath = $tarPath
+        }
+        Write-Host "Loading image from: $($archive.Name)"
+        docker load -i $imagePath
+    }
+}
+
+switch ($Action) {
+    'create' {
+        if (-not $Name) {
+            $Name = "checkpoint_$(Get-Timestamp)"
+        }
+        
+        $checkpointPath = Join-Path $checkpointDir $Name
+        if ((Test-Path $checkpointPath) -and -not $Force) {
+            Write-Error "Checkpoint '$Name' already exists. Use -Force to overwrite."
+            exit 1
+        }
+        
+        Write-Host "Creating checkpoint: $Name"
+        New-Item -Path $checkpointPath -ItemType Directory -Force | Out-Null
+        
+        # Save manifest
+        $manifest = @{
+            Name = $Name
+            Description = if ($Description) { $Description } else { "Checkpoint created on $(Get-Date)" }
+            Created = Get-Date -Format 'o'
+            Version = '1.0'
+            IncludesModels = $IncludeModels.IsPresent
+            Compressed = $Compress.IsPresent
+            Environment = @{
+                OS = [System.Environment]::OSVersion.VersionString
+                PowerShell = $PSVersionTable.PSVersion.ToString()
+                Docker = docker version --format '{{.Server.Version}}' 2>$null
+            }
+        }
+        
+        # Stop services gracefully
+        Write-Host "Stopping services..."
+        docker compose -f $composeFile stop
+        
+        # Export container volumes
+        Write-Host "Backing up volumes..."
+        $volumes = Get-ContainerVolumes
+        $manifest.Volumes = $volumes
+        
+        # Backup data directory
+        $dataSource = Join-Path $repoRoot 'data'
+        $dataTarget = Join-Path $checkpointPath 'data'
+        if (Test-Path $dataSource) {
+            Write-Host "Copying data directory..."
+            Copy-Item -Path $dataSource -Destination $dataTarget -Recurse -Force
+        }
+        
+        # Backup models if requested
+        if ($IncludeModels) {
+            $modelsSource = Join-Path $repoRoot 'models'
+            $modelsTarget = Join-Path $checkpointPath 'models'
+            if (Test-Path $modelsSource) {
+                Write-Host "Copying models directory (this may take a while)..."
+                Copy-Item -Path $modelsSource -Destination $modelsTarget -Recurse -Force
+            }
+        }
+        
+        # Backup configuration files
+        Write-Host "Backing up configuration..."
+        $configDir = Join-Path $checkpointPath 'config'
+        New-Item -Path $configDir -ItemType Directory -Force | Out-Null
+        
+        @('.env', 'docker-compose.yml') | ForEach-Object {
+            $src = if ($_ -eq 'docker-compose.yml') { $composeFile } else { Join-Path $repoRoot $_ }
+            if (Test-Path $src) {
+                Copy-Item -Path $src -Destination $configDir -Force
+            }
+        }
+        
+        # Export docker images
+        Export-DockerImages -checkpoint $checkpointPath
+        
+        # Export Ollama model list
+        Write-Host "Exporting Ollama model list..."
+        $ollamaModels = docker compose -f $composeFile run --rm ollama ollama list 2>$null
+        $manifest.OllamaModels = $ollamaModels
+        Set-Content -Path (Join-Path $checkpointPath 'ollama-models.txt') -Value $ollamaModels
+        
+        # Save manifest
+        Save-CheckpointManifest -name $Name -manifest $manifest
+        
+        # Compress if requested
+        if ($Compress) {
+            Write-Host "Compressing checkpoint..."
+            $archivePath = Join-Path $checkpointDir "$Name.zip"
+            Compress-Archive -Path $checkpointPath -DestinationPath $archivePath -Force
+            Remove-Item -Path $checkpointPath -Recurse -Force
+            Write-Host "Checkpoint compressed to: $archivePath"
+        }
+        
+        # Restart services
+        Write-Host "Restarting services..."
+        docker compose -f $composeFile up -d
+        
+        Write-Host "Checkpoint created successfully: $Name"
+    }
+    
+    'restore' {
+        if (-not $Name) {
+            Write-Error "Specify checkpoint name with -Name"
+            exit 1
+        }
+        
+        $checkpointPath = Join-Path $checkpointDir $Name
+        
+        # Handle compressed checkpoints
+        if (-not (Test-Path $checkpointPath)) {
+            $archivePath = Join-Path $checkpointDir "$Name.zip"
+            if (Test-Path $archivePath) {
+                Write-Host "Extracting compressed checkpoint..."
+                Expand-Archive -Path $archivePath -DestinationPath $checkpointDir -Force
+            } else {
+                Write-Error "Checkpoint '$Name' not found"
+                exit 1
+            }
+        }
+        
+        $manifest = Get-CheckpointManifest -name $Name
+        if (-not $manifest) {
+            Write-Error "No manifest found for checkpoint '$Name'"
+            exit 1
+        }
+        
+        Write-Host "Restoring checkpoint: $Name"
+        Write-Host "Created: $($manifest.Created)"
+        Write-Host "Description: $($manifest.Description)"
+        
+        if (-not $Force) {
+            $confirm = Read-Host "This will overwrite current data. Continue? (y/N)"
+            if ($confirm -ne 'y') {
+                Write-Host "Restore cancelled"
+                exit 0
+            }
+        }
+        
+        # Stop services
+        Write-Host "Stopping services..."
+        docker compose -f $composeFile down
+        
+        # Import docker images
+        Import-DockerImages -checkpoint $checkpointPath
+        
+        # Restore configuration
+        Write-Host "Restoring configuration..."
+        $configDir = Join-Path $checkpointPath 'config'
+        if (Test-Path $configDir) {
+            Get-ChildItem $configDir | ForEach-Object {
+                $target = if ($_.Name -eq 'docker-compose.yml') { 
+                    $composeFile 
+                } else { 
+                    Join-Path $repoRoot $_.Name 
+                }
+                Copy-Item -Path $_.FullName -Destination $target -Force
+            }
+        }
+        
+        # Restore data
+        Write-Host "Restoring data..."
+        $dataSource = Join-Path $checkpointPath 'data'
+        $dataTarget = Join-Path $repoRoot 'data'
+        if (Test-Path $dataSource) {
+            if (Test-Path $dataTarget) {
+                Remove-Item -Path $dataTarget -Recurse -Force
+            }
+            Copy-Item -Path $dataSource -Destination $dataTarget -Recurse -Force
+        }
+        
+        # Restore models if included
+        if ($manifest.IncludesModels) {
+            Write-Host "Restoring models..."
+            $modelsSource = Join-Path $checkpointPath 'models'
+            $modelsTarget = Join-Path $repoRoot 'models'
+            if (Test-Path $modelsSource) {
+                if (Test-Path $modelsTarget) {
+                    Remove-Item -Path $modelsTarget -Recurse -Force
+                }
+                Copy-Item -Path $modelsSource -Destination $modelsTarget -Recurse -Force
+            }
+        }
+        
+        # Start services
+        Write-Host "Starting services..."
+        docker compose -f $composeFile up -d
+        
+        # Wait for Ollama to be ready
+        Write-Host "Waiting for Ollama to be ready..."
+        Start-Sleep -Seconds 10
+        
+        # Re-create custom models from Modelfiles
+        Write-Host "Recreating custom models..."
+        & (Join-Path $repoRoot 'scripts\model.ps1') -Action create-all
+        
+        Write-Host "Checkpoint restored successfully"
+    }
+    
+    'list' {
+        Write-Host "Available checkpoints:"
+        Write-Host "====================="
+        
+        $checkpoints = @()
+        
+        # Find regular checkpoints
+        Get-ChildItem $checkpointDir -Directory | ForEach-Object {
+            $manifest = Get-CheckpointManifest -name $_.Name
+            if ($manifest) {
+                $checkpoints += [PSCustomObject]@{
+                    Name = $_.Name
+                    Created = $manifest.Created
+                    Description = $manifest.Description
+                    Models = $manifest.IncludesModels
+                    Size = "{0:N2} GB" -f ((Get-ChildItem $_.FullName -Recurse | Measure-Object -Property Length -Sum).Sum / 1GB)
+                }
+            }
+        }
+        
+        # Find compressed checkpoints
+        Get-ChildItem $checkpointDir -Filter "*.zip" | ForEach-Object {
+            $name = $_.BaseName
+            $manifestPath = Join-Path $checkpointDir "$name.manifest.json"
+            if (Test-Path $manifestPath) {
+                $manifest = Get-Content $manifestPath | ConvertFrom-Json
+                $checkpoints += [PSCustomObject]@{
+                    Name = "$name (compressed)"
+                    Created = $manifest.Created
+                    Description = $manifest.Description
+                    Models = $manifest.IncludesModels
+                    Size = "{0:N2} GB" -f ($_.Length / 1GB)
+                }
+            }
+        }
+        
+        if ($checkpoints.Count -eq 0) {
+            Write-Host "No checkpoints found"
+        } else {
+            $checkpoints | Format-Table -AutoSize
+        }
+    }
+    
+    'delete' {
+        if (-not $Name) {
+            Write-Error "Specify checkpoint name with -Name"
+            exit 1
+        }
+        
+        $checkpointPath = Join-Path $checkpointDir $Name
+        $archivePath = Join-Path $checkpointDir "$Name.zip"
+        $manifestPath = Join-Path $checkpointDir "$Name.manifest.json"
+        
+        if (-not $Force) {
+            $confirm = Read-Host "Delete checkpoint '$Name'? (y/N)"
+            if ($confirm -ne 'y') {
+                Write-Host "Deletion cancelled"
+                exit 0
+            }
+        }
+        
+        @($checkpointPath, $archivePath, $manifestPath) | ForEach-Object {
+            if (Test-Path $_) {
+                Remove-Item -Path $_ -Recurse -Force
+                Write-Host "Deleted: $_"
+            }
+        }
+    }
+    
+    'export' {
+        if (-not $Name -or -not $Path) {
+            Write-Error "Specify -Name and -Path for export"
+            exit 1
+        }
+        
+        $checkpointPath = Join-Path $checkpointDir $Name
+        if (-not (Test-Path $checkpointPath)) {
+            $archivePath = Join-Path $checkpointDir "$Name.zip"
+            if (Test-Path $archivePath) {
+                Copy-Item -Path $archivePath -Destination $Path -Force
+                Write-Host "Exported compressed checkpoint to: $Path"
+            } else {
+                Write-Error "Checkpoint '$Name' not found"
+            }
+        } else {
+            Write-Host "Creating export archive..."
+            Compress-Archive -Path $checkpointPath -DestinationPath $Path -Force
+            Write-Host "Exported checkpoint to: $Path"
+        }
+    }
+    
+    'import' {
+        if (-not $Path) {
+            Write-Error "Specify -Path to import from"
+            exit 1
+        }
+        
+        if (-not (Test-Path $Path)) {
+            Write-Error "Import file not found: $Path"
+            exit 1
+        }
+        
+        $fileName = [System.IO.Path]::GetFileNameWithoutExtension($Path)
+        $targetPath = Join-Path $checkpointDir "$fileName.zip"
+        
+        Copy-Item -Path $Path -Destination $targetPath -Force
+        Write-Host "Imported checkpoint: $fileName"
+    }
+}
