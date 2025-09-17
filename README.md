@@ -56,3 +56,4 @@ See `docs/ARCHITECTURE.md` for details.
 - `docs/CONTEXT_RESULTS_*.md`: Historical context sweep outcomes.
 - `docs/STACK_STATUS_2025-09-16.md`: Snapshot of available tooling, outstanding gaps, and next validation actions.
 - `docs/ENVIRONMENT.md`: Generated host environment fingerprint (regenerate after host changes).
+https://vscode.dev/tunnel/g1mvp/c:/Users/akrin/OneDrive/Desktop/2
