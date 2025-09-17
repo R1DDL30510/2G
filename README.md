@@ -20,7 +20,7 @@ For automation pipelines that must avoid prompts, call `./scripts/bootstrap.ps1 
 ## Validation & Health Checks
 - Generate a host environment fingerprint with `./scripts/bootstrap.ps1 -Report` (writes `docs/ENVIRONMENT.md` **and** archives the same output under `docs/evidence/environment/`). The report now checks for `curl`, `pytest`, `nvidia-smi`, and `ollama` in addition to the original tooling list.
 - Launch the interactive diagnostics menu explicitly with `./scripts/bootstrap.ps1 -Menu`. The menu exposes GPU evaluation, host checks, and the imported Clean repository utilities.
-- Run a guarded evaluation sweep: `./scripts/context-sweep.ps1 -CpuOnly -Safe -WriteReport` (outputs `docs/CONTEXT_RESULTS_*.md`).
+- Run a guarded evaluation sweep with GPU validation: `./scripts/context-sweep.ps1 -Safe -WriteReport` (add `-CpuOnly` only when CUDA resources are unavailable to keep evidence flowing into `docs/CONTEXT_RESULTS_*.md`).
 - Tail combined service logs: `./scripts/compose.ps1 logs`.
 - Run automated smoke tests locally with `pip install -r requirements-dev.txt && pytest`. These checks parse `infra/compose/docker-compose.yml`, verify Modelfiles, and validate `.env.example` defaults. The same suite executes in CI via `.github/workflows/smoke-tests.yml`.
 
