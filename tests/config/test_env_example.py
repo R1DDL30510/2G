@@ -40,6 +40,7 @@ def test_env_example_contains_expected_keys() -> None:
         "OLLAMA_BENCH_MODEL",
         "OLLAMA_BENCH_PROMPT",
         "EVIDENCE_ROOT",
+        "LOG_FILE",
     }
     missing = expected_keys.difference(env)
     assert not missing, f".env.example is missing keys: {sorted(missing)}"
@@ -63,6 +64,6 @@ def test_prompt_reference_exists() -> None:
 
 def test_relative_directories_are_not_absolute() -> None:
     env = load_env()
-    for key in ("MODELS_DIR", "DATA_DIR", "EVIDENCE_ROOT"):
+    for key in ("MODELS_DIR", "DATA_DIR", "EVIDENCE_ROOT", "LOG_FILE"):
         value = env[key]
         assert value.startswith("."), f"{key} should use a repository-relative path"
