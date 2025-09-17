@@ -14,6 +14,12 @@ The sweep utility now supports multiple labeled profiles so you can continue tes
 2. Run `./scripts/context-sweep.ps1 -Safe -WriteReport` to capture a markdown artifact tagged with the active profile.
 3. For GPU validation, drop `-CpuOnly` and allow the helper to pass `num_gpu=1` plus the configured `main_gpu` to avoid cross-device contention.
 
+## GPU scheduling & cooldown
+
+- The sweep helper now inspects `nvidia-smi` at startup and mirrors every test case across all detected adapters. Results and Markdown exports record which device serviced each run (`Device` column).
+- When no CUDA devices are exposed the script logs a warning and automatically falls back to CPU mode—no extra flags required. You can still force CPU-only behaviour with `-CpuOnly` for deterministic baselines.
+- To limit thermal spikes, each GPU hand-off sleeps for `GpuCooldownSec` seconds (default `15`) before the next invocation. Combine this with `-InterRunDelaySec` for additional headroom between prompts, or shorten the cooldown when you are sweeping cooler-running 3B/4B models.
+
 ## Additional model ideas
 
 - **llama3.2:3b-instruct**: Works well when VRAM is limited (single 12 GB card) and happily runs with 8k contexts; add a custom profile by editing `scripts/context-sweep.ps1` or passing `-Profile` + plan overrides.
