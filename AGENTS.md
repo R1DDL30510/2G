@@ -30,5 +30,5 @@
 
 ## Security & Configuration Tips
 - Never commit secrets; sync `.env` with `.env.example` using `./scripts/bootstrap.ps1 -PromptSecrets` when credentials change or rotate.
-- The stack pins `ollama/ollama:0.3.14`, `ghcr.io/open-webui/open-webui:v0.3.7`, and `qdrant/qdrant:v1.15.4`; validate updates on a branch before promoting.
+- The stack pins `ollama/ollama:0.11.11`, `ghcr.io/open-webui/open-webui:v0.3.7`, and `qdrant/qdrant:v1.15.4`; validate updates on a branch before promoting.
 - Store large artifacts in `data/` or `models/`, and export backups prior to pruning containers, volumes, or cached embeddings.
