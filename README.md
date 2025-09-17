@@ -11,7 +11,7 @@ Optional: Python 3.10+, Node.js LTS, PowerShell 7 for scripts.
 
 ## Quickstart
 1. Initialize the workspace: `./scripts/bootstrap.ps1 -PromptSecrets` (creates `.env`, `data/`, and `models/`, and lets you confirm CLI keys interactively). Running `./scripts/bootstrap.ps1` without switches now opens an interactive menu so you can trigger health checks and benchmarks from one place.
-2. Adjust `.env` if you need different ports or storage paths. Benchmark defaults (model, prompt, evidence directory) are stored in `.env` under the *Diagnostics and benchmarking* section.
+2. Adjust `.env` if you need different ports or storage paths. Benchmark defaults (model, prompt, evidence directory) are stored in `.env` under the *Diagnostics and benchmarking* section. The template also seeds `LOG_FILE=./logs/stack.log` so compose and script logs consolidate under `./logs/`.
 3. Start the stack: `./scripts/compose.ps1 up` (PowerShell).
 4. Open WebUI: http://localhost:3000 (connects to local Ollama at http://localhost:11434).
 
@@ -57,6 +57,8 @@ See `docs/ARCHITECTURE.md` for details.
 - `docs/CONTEXT_RESULTS_*.md`: Historical context sweep outcomes.
 - `docs/STACK_STATUS_2025-09-16.md`: Snapshot of available tooling, outstanding gaps, and next validation actions.
 - `docs/ENVIRONMENT.md`: Generated host environment fingerprint (regenerate after host changes).
+- `docs/RELEASE_AUDIT_2025-09-18.md`: Current release readiness audit summarising automation, documentation, and evidence gaps.
+- `docs/TASK_TEST_HARDENING_PROMPT_2025-09-18.md`: Actionable brief to close testing gaps before declaring release readiness.
 ### GPU targeting
 - The GPU-tuned Modelfile now defaults to `main_gpu 0` so single-GPU hosts can create it without edits.
 - Override the GPU index when needed: `./scripts/model.ps1 create -Model llama31-8b-gpu -MainGpu 1` or `./scripts/model.ps1 create-all -MainGpu 1`.
