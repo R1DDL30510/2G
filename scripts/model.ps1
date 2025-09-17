@@ -35,8 +35,14 @@ switch ($Action) {
   }
   'create-all' {
     $id = GetOllamaId
-    $targets = @('llama31-8b-c4k','llama31-8b-c8k','llama31-8b-c16k','llama31-8b-c32k')
-    foreach($t in $targets){
+    $targets = @(
+      'llama31-8b-c4k',
+      'llama31-8b-c8k',
+      'llama31-8b-c16k',
+      'llama31-8b-c32k',
+      'llama31-8b-gpu'
+    )
+    foreach ($t in $targets) {
       $file = "/modelfiles/$t.Modelfile"
       docker exec -i $id sh -lc "test -f $file && ollama create $t -f $file || echo 'skip: missing ' $file"
     }
@@ -60,3 +66,7 @@ switch ($Action) {
     docker exec -i $id ollama show $Model
   }
 }
+
+
+
+

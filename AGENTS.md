@@ -1,32 +1,34 @@
-﻿# Repository Guidelines
+# Repository Guidelines
 
 ## Project Structure & Module Organization
-This repo centers on the compose stack under `infra/compose/`, where `docker-compose.yml` wires together Ollama, Open WebUI, and Qdrant.
-PowerShell lifecycle helpers live in `scripts/` (e.g., `compose.ps1`, `model.ps1`, `context-sweep.ps1`).
-Custom Ollama `Modelfile` definitions reside in `modelfiles/`.
-Persisted embeddings and chat logs belong in `data/`, while model caches stay in `models/` (both gitignored).
-When adding application code, mirror modules between `src/` and `tests/` so implementations and specs share paths.
+- Compose stack lives under `infra/compose/`; `docker-compose.yml` orchestrates Ollama, Open WebUI, and Qdrant.
+- PowerShell helpers in `scripts/` (e.g., `compose.ps1`, `model.ps1`, `context-sweep.ps1`) manage lifecycle, models, and diagnostics.
+- Custom Ollama `Modelfile` definitions reside in `modelfiles/`; persisted embeddings live in `data/` and model caches in `models/` (both gitignored).
+- Mirror implementation modules in `src/` with matching specs in `tests/`; keep shared prompts and evidence in `docs/`.
 
 ## Build, Test, and Development Commands
-`./scripts/compose.ps1 up` brings up the full stack with pinned services; use `down`, `restart`, or `logs` for matching lifecycle operations.
-`docker compose -f infra/compose/docker-compose.yml up -d` starts the same topology headless for automation contexts.
-Manage Ollama models through `./scripts/model.ps1 list`, `pull`, or `create-all`; for example, `./scripts/model.ps1 pull -Model llama3.1:8b`.
+- `./scripts/bootstrap.ps1 -PromptSecrets` provisions `.env`, initializes storage, and surfaces optional diagnostics.
+- `./scripts/compose.ps1 up|down|restart|logs` manages the full stack from PowerShell.
+- `docker compose -f infra/compose/docker-compose.yml up -d` runs services headless for CI or remote hosts.
+- `./scripts/model.ps1 pull -Model llama3.1:8b` fetches models; pair with `list` or `create-all` to audit local inventory.
+- `pip install -r requirements-dev.txt && pytest` executes smoke tests that validate compose manifests, Modelfiles, and `.env.example` defaults.
 
 ## Coding Style & Naming Conventions
-Follow `.editorconfig`: 2-space indentation for JavaScript, TypeScript, JSON, YAML, and Markdown; 4-space indentation for Python, C#, and PowerShell.
-Use kebab-case filenames for JS/TS, snake_case for Python, and PascalCase for PowerShell cmdlets.
-Run language-appropriate formatters or linters before committing and align new directories with existing module structure.
+- Follow `.editorconfig`: 2 spaces for JavaScript, TypeScript, JSON, YAML, and Markdown; 4 spaces for Python, C#, and PowerShell.
+- Use kebab-case filenames for JS/TS, snake_case for Python, and PascalCase for PowerShell cmdlets.
+- Run language-specific formatters or linters before committing and keep module structure mirrored between `src/` and `tests/`.
 
 ## Testing Guidelines
-Keep unit tests offline and colocated under `tests/`, stubbing external integrations while covering new behavior.
-For integration validation, run `./scripts/context-sweep.ps1 -CpuOnly -Safe -WriteReport`; reports land in `docs/CONTEXT_RESULTS_*.md`.
+- Place unit tests under `tests/` beside their implementation peers and stub external integrations.
+- Keep test runs offline and deterministic; capture new fixtures under `tests/fixtures/` when necessary.
+- For integration evidence, run `./scripts/context-sweep.ps1 -Safe -WriteReport` (add `-CpuOnly` when GPUs are unavailable); reports land in `docs/CONTEXT_RESULTS_*.md`.
 
 ## Commit & Pull Request Guidelines
-Use Conventional Commit prefixes such as `feat:`, `fix:`, or `chore:` to describe changes.
-Pull requests must explain intent, reference issues (e.g., `Closes #123`), and attach screenshots or logs when behavior shifts.
-Verify the compose stack locally before requesting review and rerun relevant sweeps to guard against regressions.
+- Use Conventional Commit prefixes such as `feat:`, `fix:`, and `chore:` with clear scopes.
+- Reference related work (`Closes #123`), summarize behavior changes, and attach logs or screenshots when output shifts.
+- Verify `./scripts/compose.ps1 up` succeeds locally and rerun relevant sweeps before requesting review.
 
 ## Security & Configuration Tips
-Never commit secrets; sync `.env` with `.env.example` when configuring environments.
-The stack pins `ollama/ollama:0.3.14`, `ghcr.io/open-webui/open-webui:v0.3.7`, and `qdrant/qdrant:v1.15.4`; validate updates in a branch before promoting.
-Store large artifacts in `data/` or `models/`, and export backups prior to pruning containers.
+- Never commit secrets; sync `.env` with `.env.example` using `./scripts/bootstrap.ps1 -PromptSecrets` when credentials change.
+- The stack pins `ollama/ollama:0.3.14`, `ghcr.io/open-webui/open-webui:v0.3.7`, and `qdrant/qdrant:v1.15.4`; validate updates on a branch before promoting.
+- Store large artifacts in `data/` or `models/`, and export backups prior to pruning containers or volumes.
