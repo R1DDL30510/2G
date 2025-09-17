@@ -7,12 +7,12 @@ This repository provisions a local, open-source AI stack with Docker Compose. Ev
 - Ollama hosts and serves local LLMs, Open WebUI provides the chat UI, and Qdrant offers vector search for retrieval-augmented workflows.
 
 ## Directory Layout
-- `infra/compose/` – primary `docker-compose.yml` plus future overrides.
-- `scripts/` – PowerShell helpers (`compose.ps1`, `model.ps1`, `context-sweep.ps1`, `eval-context.ps1`).
-- `modelfiles/` – custom Ollama Modelfiles tracked in git.
-- `data/`, `models/` – persistent volumes and caches (ignored by git).
-- `docs/` – architecture notes, release reports, and context evaluation outputs.
-- `src/`, `tests/` – application code and mirrored test suites (add as needed).
+- `infra/compose/`  primary `docker-compose.yml` plus future overrides.
+- `scripts/`  PowerShell helpers (`compose.ps1`, `model.ps1`, `context-sweep.ps1`, `eval-context.ps1`).
+- `modelfiles/`  custom Ollama Modelfiles tracked in git.
+- `data/`, `models/`  persistent volumes and caches (ignored by git).
+- `docs/`  architecture notes, release reports, and context evaluation outputs.
+- `src/`, `tests/`  application code and mirrored test suites (add as needed).
 
 ## Prerequisites
 - Windows 11 (WSL2 optional) with administrator rights.
@@ -25,11 +25,11 @@ This repository provisions a local, open-source AI stack with Docker Compose. Ev
 3. Open http://localhost:3000 for Open WebUI (talks to Ollama at http://localhost:11434 and Qdrant at http://localhost:6333).
 
 ## Operations & Validation
-- `./scripts/compose.ps1 up|down|restart|logs` – manage the compose services.
-- `docker compose -f infra/compose/docker-compose.yml up -d` – direct compose invocation for automation.
-- `./scripts/model.ps1 list|pull|create-all` – manage base and custom Ollama models.
-- `./scripts/context-sweep.ps1 -CpuOnly -Safe -WriteReport` – integration sweep that emits `docs/CONTEXT_RESULTS_*.md`.
-- `./scripts/eval-context.ps1 -Model llama31-8b-c8k -TokensTarget 6000` – targeted evaluation run.
+- `./scripts/compose.ps1 up|down|restart|logs`  manage the compose services.
+- `docker compose -f infra/compose/docker-compose.yml up -d`  direct compose invocation for automation.
+- `./scripts/model.ps1 list|pull|create-all`  manage base and custom Ollama models.
+- `./scripts/context-sweep.ps1 -Safe -WriteReport`  integration sweep that captures GPU validation evidence (append `-CpuOnly` only when a CUDA-capable device is unavailable) and emits `docs/CONTEXT_RESULTS_*.md`.
+- `./scripts/eval-context.ps1 -Model llama31-8b-c8k -TokensTarget 6000`  targeted evaluation run.
 
 ## Maintenance Tips
 - Keep `.env` in sync with `.env.example`; never commit secrets.

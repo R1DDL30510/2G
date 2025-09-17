@@ -29,4 +29,4 @@
 2. Export the resulting `OLLAMA_API_KEY` (dummy or custom) before launching the Codex CLI so requests authenticate cleanly.
 3. Start the stack with `./scripts/compose.ps1 up` and verify service health via `./scripts/compose.ps1 logs`.
 4. Register custom context variants with `./scripts/model.ps1 create-all` after the Ollama container is online.
-5. Execute `./scripts/context-sweep.ps1 -Safe -CpuOnly -WriteReport` to capture a fresh baseline, then repeat without `-CpuOnly` when GPU resources are ready.
+5. Execute `./scripts/context-sweep.ps1 -Safe -WriteReport` on a CUDA-capable host to close the GPU validation gap, reserving the `-CpuOnly` switch for environments without accelerator access.
