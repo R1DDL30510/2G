@@ -1,10 +1,10 @@
 # Full Project Report – Local AI Infrastructure
 
 ## Executive Summary
-- The repository provisions a self-contained, Docker Compose based AI stack that runs Ollama, Open WebUI, and Qdrant entirely on local hardware with no cloud dependencies.
-- PowerShell automation scripts cover bootstrap, compose lifecycle, model lifecycle, and evaluation flows, but automated quality gates remain minimal and still rely on manual verification.
-- Recent context sweeps executed in safe mode validated CPU-only runs up to 12k tokens; GPU validation and higher context targets remain outstanding follow-up work.
-- Key risks center on absent test coverage, limited observability, and manual coordination of GPU resources; prioritized actions focus on enabling GPU sweeps, adding smoke tests, and hardening backup and monitoring practices.
+- The repository provisions a self-contained Docker Compose stack (Ollama, Open WebUI, Qdrant) with PowerShell automation, but it ships only scaffolding—model weights, evidence artifacts, and persistent data remain operator-supplied.
+- Structural smoke tests exist, yet runtime assurances still depend on manual verification; GPU validation, telemetry capture, and coverage publishing have not occurred.
+- Context sweeps executed in safe CPU mode reached 12k tokens, while the advertised GPU profile lacks automation support, leaving a mismatch between documented inventory and available scripts.
+- Key risks include missing GPU evidence, empty `docs/evidence/` directories, minimal automated testing, and manual backup/observability processes that must be formalised before production rollout.
 
 ## Stack Snapshot
 
@@ -23,6 +23,7 @@
 ### Model Assets
 - Custom context-window variants (`llama31-8b-c4k`, `c8k`, `c16k`, `c32k`) and a GPU-tuned profile are defined under `modelfiles/` as thin wrappers around `llama3.1:8b` with adjusted parameters.【F:modelfiles/llama31-8b-c8k.Modelfile†L1-L3】
 - `scripts/model.ps1` orchestrates listing, pulling, creating, and running models directly inside the Ollama container, ensuring Modelfile-based variants stay synchronized.【F:scripts/model.ps1†L1-L61】
+- **Automation gap:** `scripts/model.ps1 create-all` covers only the context variants, so the GPU profile documented in reports must be created manually, creating an inventory vs. automation inconsistency.
 
 ## Operational Tooling & Automation
 
@@ -41,17 +42,17 @@
 - Before production use, regenerate the report after verifying Docker Desktop, Git, and runtime toolchains are installed and aligned with organizational standards.
 
 ## Quality, Risk, and Observability
-- **Testing Coverage:** No unit or integration test suites exist yet; quality relies on manual compose smoke checks and context sweeps. Introduce pytest/jest scaffolding mirroring future `src/` additions to reduce regression risk.
-- **Operational Visibility:** Compose logs (`scripts/compose.ps1 logs`) provide baseline observability. Augment with container health checks, GPU telemetry (e.g., `nvidia-smi` sampling), and Qdrant snapshot verification procedures.
-- **Reliability Risks:** Manual GPU toggling, absence of automated sweeps, and missing backup routines for `data/` volumes represent the highest operational risks. Document and automate volume backup/restore flows prior to significant usage.
-- **Security & Compliance:** Secrets are not committed; `.env` stays local. Continue reviewing upstream image CVEs before bumping tags and enforce local auth (`OPENWEBUI_AUTH=true`) when exposing beyond localhost.
+- **Testing Coverage:** Structural pytest checks exist but provide no runtime confidence; compose bring-up, API reachability, and PowerShell script behaviour remain untested.
+- **Operational Visibility:** Compose logs (`scripts/compose.ps1 logs`) are the only routine insight today. GPU telemetry, `nvidia-smi` capture, and evidence exports to `docs/evidence/` have not been established.
+- **Reliability Risks:** Manual GPU toggling, lack of automated sweeps, empty backup procedures for `data/` volumes, and the `create-all`/GPU profile mismatch are the current blockers.
+- **Security & Compliance:** Secrets are still excluded from version control; maintain diligence around pinned image CVEs and enable `OPENWEBUI_AUTH=true` before exposing services beyond localhost.
 
 ## Recommended Actions (Prioritized)
-1. Execute a GPU-enabled context sweep (`./scripts/context-sweep.ps1 -Safe -WriteReport`) and archive the results to validate CUDA paths end-to-end.
-2. Stand up minimal automated smoke tests (e.g., PowerShell Pester scripts for compose lifecycle and API reachability) to catch configuration regressions early.
-3. Build a lightweight backup job for `data/open-webui` and `data/qdrant` directories, documenting restore drills in `docs/`.
-4. Expand `docs/ARCHITECTURE.md` with deployment diagrams and sequence flows to aid onboarding, and link telemetry/monitoring conventions.
-5. Schedule periodic reviews of pinned container images, capturing change logs and security notes in future release reports.
+1. Update `scripts/model.ps1 create-all` (or document the manual step) so the GPU profile can be recreated alongside the context variants, resolving the inventory mismatch.
+2. Execute and automate GPU-enabled context sweeps (`./scripts/context-sweep.ps1 -Safe -WriteReport`) with artifacts published to `docs/evidence/` for traceability.
+3. Expand automated coverage with runtime pytest probes and Pester suites, wiring results into CI and persisting coverage outputs.
+4. Build and document repeatable backup/restore workflows for `data/open-webui` and `data/qdrant`, including telemetry guidance for GPU and container health.
+5. Regenerate `docs/ENVIRONMENT.md` after verifying dependencies on an operator host and continue reviewing pinned container image CVEs in future release reports.
 
 ## Reference Materials
 - Quickstart instructions and stack prerequisites live in `README.md` and `README-G1MvP.md`.

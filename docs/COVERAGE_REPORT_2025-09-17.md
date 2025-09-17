@@ -26,9 +26,10 @@
 | Performance / regression sweeps | `scripts/context-sweep.ps1` safe mode runs | 0% automated | Only CPU-only sweeps were captured; GPU paths remain unverified and unscheduled.
 
 ### Manual Validation Baseline
-- `docs/RELEASE_v2025-09-16.md` documents manual confirmation of WebUI access and GPU enablement but, predating the new smoke suite, still states that no automated suites or coverage exist.
+- `docs/RELEASE_v2025-09-16.md` now captures the absence of GPU validation and reiterates that evidence directories remain empty until automation publishes results.
 - Context sweep outputs (`docs/CONTEXT_RESULTS_2025-09-16_15-05-26.md` and `docs/CONTEXT_RESULTS_2025-09-16_15-17-49.md`) show CPU-only runs, indicating manual invocation of the safe profile without GPU acceleration.
 - `docs/STACK_STATUS_2025-09-16.md` notes that PowerShell and Docker were unavailable in the assessment environment, preventing automated script execution during the last verification pass.
+- Model automation gaps persist: `scripts/model.ps1 create-all` excludes the GPU variant referenced in documentation, so operators must create it manually before running GPU sweeps.
 
 ### Tooling & Reporting Availability
 - `.github/workflows/smoke-tests.yml` runs the new pytest suite on every push and pull request, but there are still no coverage configuration files (e.g., `coverage.py`, `jest.config.js`, Pester coverage directives) to measure runtime behaviour or emit artifacts.
