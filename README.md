@@ -15,7 +15,7 @@ Optional: Python 3.10+, Node.js LTS, PowerShell 7 for scripts.
 3. Start the stack: `./scripts/compose.ps1 up` (PowerShell).
 4. Open WebUI: http://localhost:3000 (connects to local Ollama at http://localhost:11434).
 
-GPU hosts should layer the GPU overlay when starting the stack directly with Docker Compose: `docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.gpu.yml up -d`. The base file now defaults Ollama to CPU mode so CI and non-NVIDIA machines can boot the stack without errors; the overlay re-enables CUDA by requesting GPU resources and restoring the NVIDIA environment variables.
+GPU hosts should layer the GPU overlay when starting the stack directly with Docker Compose: `docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.gpu.yml up -d`. The base file now defaults Ollama to CPU mode so CI and non-NVIDIA machines can boot the stack without errors; the overlay re-enables CUDA by requesting GPU resources, locks the default device to GPU index `1` (RTX 3060), and restores the NVIDIA environment variables. Override the defaults by setting `OLLAMA_VISIBLE_GPUS`, `OLLAMA_GPU_ALLOCATION`, or `OLLAMA_DEFAULT_GPU` in `.env`.
 
 For automation pipelines that must avoid prompts, call `./scripts/bootstrap.ps1 -NoMenu` to skip the interactive menu once provisioning is complete.
 
@@ -36,6 +36,7 @@ The compose stack is pinned to `ollama/ollama:0.3.14`, `ghcr.io/open-webui/open-
 - GPU evaluation and host health snapshots initiated from the bootstrap menu are saved in timestamped folders under `docs/evidence/`.
 - `scripts/clean/capture_state.ps1` mirrors the Clean repository tooling: it captures `nvidia-smi` summaries, Ollama inventory, and optional Docker metadata to `docs/evidence/state/<timestamp>/`.
 - `scripts/clean/bench_ollama.ps1` runs repeatable latency and throughput measurements against the model defined in `.env` (default `llama3.1:8b`) using the prompt stored at `docs/prompts/bench-default.txt`. Results land in `docs/evidence/benchmarks/` as Markdown + JSON artifacts.
+- `scripts/clean/prune_evidence.ps1` enforces retention by deleting aged evidence directories (defaults: keep 5 most recent runs for 14 days). Set `EVIDENCE_RETENTION_DAYS` or `EVIDENCE_KEEP_LATEST` in `.env` to tune the behaviour or pass parameters directly.
 - To change evidence destinations, adjust `EVIDENCE_ROOT` inside `.env`; all diagnostics respect this path.
 
 ## Codex CLI Integration
@@ -67,8 +68,8 @@ See `docs/ARCHITECTURE.md` for details.
 - `docs/FULL_STACK_AUDIT_2025-09-19.md`: Latest CI and dependency audit capturing the plan-only sweep change and tooling convergence.
 - `docs/TASK_TEST_HARDENING_PROMPT_2025-09-18.md`: Actionable brief to close testing gaps before declaring release readiness.
 ### GPU targeting
-- The GPU-tuned Modelfile now defaults to `main_gpu 0` so single-GPU hosts can create it without edits.
-- Override the GPU index when needed: `./scripts/model.ps1 create -Model llama31-8b-gpu -MainGpu 1` or `./scripts/model.ps1 create-all -MainGpu 1`.
+- The GPU-tuned Modelfile now defaults to `main_gpu 1` (RTX 3060) so the higher-capacity card is selected automatically on dual-GPU hosts.
+- Override the GPU index when needed: update `OLLAMA_VISIBLE_GPUS`/`OLLAMA_DEFAULT_GPU` in `.env` or pass `./scripts/model.ps1 create -Model llama31-8b-gpu -MainGpu <index>` for one-off builds.
 - Context variants ignore the override, but the helper script applies it when the GPU profile is built.
 
 ### Context sweeps

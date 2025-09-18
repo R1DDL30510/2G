@@ -1,7 +1,8 @@
 services:
   ollama:
     environment:
-      - NVIDIA_VISIBLE_DEVICES=${OLLAMA_VISIBLE_GPUS:-all}
+      - NVIDIA_VISIBLE_DEVICES=${OLLAMA_VISIBLE_GPUS:-1}
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
       - OLLAMA_USE_CPU=${OLLAMA_USE_CPU:-false}
-    gpus: ${OLLAMA_GPU_ALLOCATION:-all}
+      - OLLAMA_DEFAULT_GPU=${OLLAMA_DEFAULT_GPU:-1}
+    gpus: "${OLLAMA_GPU_ALLOCATION:-device=1}"
