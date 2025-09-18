@@ -22,7 +22,7 @@ function Get-EnvValue {
     }
     foreach ($line in Get-Content $envFile) {
         if ($line -match "^\s*$([regex]::Escape($Key))=(.+)$") {
-            return $Matches[1]
+            return $Matches[2]
         }
     }
     return $null
