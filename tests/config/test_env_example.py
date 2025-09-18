@@ -24,17 +24,14 @@ def load_env() -> dict[str, str]:
 
 def test_context_profile_default_present() -> None:
     env = load_env()
-    assert env["CONTEXT_SWEEP_PROFILE"] == "llama31-long", "context sweep default should be populated"
+    assert env["CONTEXT_SWEEP_PROFILE"] == "baseline-cpu", "context sweep default should be populated"
 
 def test_env_example_contains_expected_keys() -> None:
     env = load_env()
     expected_keys = {
-        "WEBUI_PORT",
+        "OLLAMA_IMAGE",
         "OLLAMA_PORT",
-        "QDRANT_PORT",
         "MODELS_DIR",
-        "DATA_DIR",
-        "OPENWEBUI_AUTH",
         "OLLAMA_API_KEY",
         "OLLAMA_BASE_URL",
         "OLLAMA_BENCH_MODEL",
@@ -48,9 +45,8 @@ def test_env_example_contains_expected_keys() -> None:
 
 def test_ports_are_numeric() -> None:
     env = load_env()
-    for key in ("WEBUI_PORT", "OLLAMA_PORT", "QDRANT_PORT"):
-        value = env[key]
-        assert value.isdigit(), f"{key} should be a numeric port"
+    value = env["OLLAMA_PORT"]
+    assert value.isdigit(), "OLLAMA_PORT should be a numeric port"
 
 
 def test_prompt_reference_exists() -> None:
@@ -64,6 +60,6 @@ def test_prompt_reference_exists() -> None:
 
 def test_relative_directories_are_not_absolute() -> None:
     env = load_env()
-    for key in ("MODELS_DIR", "DATA_DIR", "EVIDENCE_ROOT", "LOG_FILE"):
+    for key in ("MODELS_DIR", "EVIDENCE_ROOT", "LOG_FILE"):
         value = env[key]
         assert value.startswith("."), f"{key} should use a repository-relative path"

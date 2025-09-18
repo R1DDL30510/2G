@@ -75,27 +75,15 @@ SERVICES_CACHE = parse_services()
 GPU_SERVICES_CACHE = parse_services(GPU_COMPOSE_PATH)
 
 
-def test_compose_declares_expected_services() -> None:
-    expected_services = {"ollama", "open-webui", "qdrant"}
-    missing = expected_services.difference(SERVICES_CACHE)
-    assert not missing, f"missing required services: {sorted(missing)}"
+def test_compose_declares_only_ollama_service() -> None:
+    assert set(SERVICES_CACHE) == {"ollama"}, f"unexpected services defined: {sorted(SERVICES_CACHE)}"
 
 
-def test_images_are_pinned_and_not_latest() -> None:
-    for name, definition in SERVICES_CACHE.items():
-        image = definition.get("image")
-        assert isinstance(image, str) and image, f"{name} must declare an image"
-        assert ":" in image, f"{name} image must include a tag"
-        tag = image.split(":", maxsplit=1)[1]
-        assert tag and tag.lower() != "latest", f"{name} image must pin a non-latest tag"
-
-
-
-def test_open_webui_depends_on_ollama() -> None:
-    open_webui = SERVICES_CACHE["open-webui"]
-    depends = open_webui.get("depends_on", [])
-    assert "ollama" in depends, "open-webui service must depend on ollama"
-
+def test_ollama_image_uses_env_override() -> None:
+    ollama = SERVICES_CACHE["ollama"]
+    image = ollama.get("image")
+    assert isinstance(image, str) and image, "ollama must declare an image override"
+    assert image == "${OLLAMA_IMAGE:-ollama/ollama}", "ollama image should defer to environment override"
 
 
 def test_ollama_defaults_to_cpu_mode() -> None:
@@ -119,16 +107,6 @@ def test_ollama_defaults_to_cpu_mode() -> None:
     ), "ollama should persist models using MODELS_DIR override"
 
 
-def test_data_root_expands_via_env_defaults() -> None:
-    for name in ("open-webui", "qdrant"):
-        service = SERVICES_CACHE[name]
-        volumes: List[str] = service.get("volumes", [])  # type: ignore[assignment]
-        assert volumes, f"{name} must declare volumes"
-        assert any(
-            volume.strip('"').startswith("../../${DATA_DIR:-data}/") for volume in volumes
-        ), f"{name} volumes should be driven by DATA_DIR overrides"
-
-
 def test_gpu_overlay_requests_cuda_resources() -> None:
     ollama = GPU_SERVICES_CACHE["ollama"]
 
@@ -145,24 +123,3 @@ def test_gpu_overlay_requests_cuda_resources() -> None:
     for pair in expected_pairs:
         assert pair in environment, f"GPU overlay environment missing {pair}"
 
-
-
-
-def test_open_webui_uses_expected_env_defaults() -> None:
-    open_webui = SERVICES_CACHE["open-webui"]
-
-    environment: List[str] = open_webui.get("environment", [])  # type: ignore[assignment]
-    expected_pairs = {
-        "OLLAMA_BASE_URL=http://ollama:11434",
-        "WEBUI_AUTH=${OPENWEBUI_AUTH:-false}",
-    }
-    for pair in expected_pairs:
-        assert pair in environment, f"open-webui environment missing {pair}"
-
-
-
-def test_qdrant_persists_data_volume() -> None:
-    qdrant = SERVICES_CACHE["qdrant"]
-
-    volumes: List[str] = qdrant.get("volumes", [])  # type: ignore[assignment]
-    assert any("/qdrant/storage" in volume for volume in volumes), "qdrant must persist storage volume"

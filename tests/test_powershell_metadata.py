@@ -37,9 +37,16 @@ def test_bootstrap_seeds_context_sweep_profile() -> None:
     assert pattern.search(content)
 
 
+def test_bootstrap_seeds_runtime_overrides() -> None:
+    content = read_text("scripts/bootstrap.ps1")
+    for key in ("OLLAMA_IMAGE", "OLLAMA_PORT", "MODELS_DIR", "LOG_FILE"):
+        expected = f"Ensure-EnvEntry -Path $envLocal -Key '{key}'"
+        assert expected in content, f"bootstrap should ensure {key} entry"
+
+
 def test_context_sweep_lists_builtin_profiles() -> None:
     content = read_text("scripts/context-sweep.ps1")
-    for profile in ("llama31-long", "qwen3-balanced", "cpu-baseline"):
+    for profile in ("baseline-cpu",):
         assert profile in content
 
 

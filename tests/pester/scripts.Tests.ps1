@@ -61,6 +61,13 @@ Describe 'scripts/bootstrap.ps1' {
         $pattern = '(?s)function\s+Invoke-WorkspaceProvisioning.*?Ensure-EnvEntry\s+-Path\s+\$envLocal\s+-Key\s+''CONTEXT_SWEEP_PROFILE'''
         ($script:bootstrapContent -match $pattern) | Should -BeTrue
     }
+
+    It 'ensures baseline runtime overrides exist in .env' {
+        foreach ($key in @('OLLAMA_IMAGE','OLLAMA_PORT','MODELS_DIR','LOG_FILE')) {
+            $pattern = "Ensure-EnvEntry -Path \$envLocal -Key '$key'"
+            ($script:bootstrapContent -match $pattern) | Should -BeTrue
+        }
+    }
 }
 
 Describe 'context evaluation tooling' {
@@ -72,7 +79,7 @@ Describe 'context evaluation tooling' {
     }
 
     It 'context sweep exposes built-in profiles' {
-        foreach ($profile in @('llama31-long','qwen3-balanced','cpu-baseline')) {
+        foreach ($profile in @('baseline-cpu')) {
             $pattern = [regex]::Escape($profile)
             ($script:sweepContent -match $pattern) | Should -BeTrue
         }
