@@ -1,41 +1,58 @@
-﻿$repoRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path))
+$script:here = if ($PesterScriptRoot) {
+    $PesterScriptRoot
+} elseif ($MyInvocation.MyCommand.Path) {
+    Split-Path -Parent $MyInvocation.MyCommand.Path
+} else {
+    (Get-Location).ProviderPath
+}
+
+$script:repoRoot = [System.IO.Path]::GetFullPath(
+    [System.IO.Path]::Combine($script:here, '..', '..')
+)
 
 Describe 'scripts/compose.ps1' {
-    $composePath = Join-Path $repoRoot 'scripts/compose.ps1'
-    $composeContent = Get-Content -Path $composePath -Raw
+    BeforeAll {
+        $script:composePath = Join-Path $script:repoRoot 'scripts/compose.ps1'
+        $script:composeContent = Get-Content -Path $script:composePath -Raw
+    }
 
     It 'declares expected actions' {
-        $composeContent | Should Match 'ValidateSet\(''up'',''down'',''restart'',''logs''\)'
+        $script:composeContent | Should -Match "ValidateSet\('up','down','restart','logs'\)"
     }
 }
 
 Describe 'scripts/bootstrap.ps1' {
-    $bootstrapPath = Join-Path $repoRoot 'scripts/bootstrap.ps1'
-    $bootstrapContent = Get-Content -Path $bootstrapPath -Raw
+    BeforeAll {
+        $script:bootstrapPath = Join-Path $script:repoRoot 'scripts/bootstrap.ps1'
+        $script:bootstrapContent = Get-Content -Path $script:bootstrapPath -Raw
+    }
 
     It 'supports PromptSecrets switch' {
-        $bootstrapContent | Should Match '\[switch\]\$PromptSecrets'
+        $script:bootstrapContent | Should -Match '\[switch\]\$PromptSecrets'
     }
 
     It 'initialises context sweep profile entry' {
-        $bootstrapContent | Should Match 'CONTEXT_SWEEP_PROFILE'
+        $pattern = '(?s)function\s+Invoke-WorkspaceProvisioning.*?Ensure-EnvEntry\s+-Path\s+\$envLocal\s+-Key\s+''CONTEXT_SWEEP_PROFILE'''
+        $script:bootstrapContent | Should -Match $pattern
     }
 }
 
 Describe 'context evaluation tooling' {
-    $sweepPath = Join-Path $repoRoot 'scripts/context-sweep.ps1'
-    $sweepContent = Get-Content -Path $sweepPath -Raw
+    BeforeAll {
+        $script:sweepPath = Join-Path $script:repoRoot 'scripts/context-sweep.ps1'
+        $script:sweepContent = Get-Content -Path $script:sweepPath -Raw
+        $script:evalPath = Join-Path $script:repoRoot 'scripts/eval-context.ps1'
+        $script:evalContent = Get-Content -Path $script:evalPath -Raw
+    }
 
     It 'context sweep exposes built-in profiles' {
         foreach ($profile in @('llama31-long','qwen3-balanced','cpu-baseline')) {
             $pattern = [regex]::Escape($profile)
-            $sweepContent | Should Match $pattern
+            $script:sweepContent | Should -Match $pattern
         }
     }
 
     It 'eval-context exposes CpuOnly switch' {
-        $evalPath = Join-Path $repoRoot 'scripts/eval-context.ps1'
-        $evalContent = Get-Content -Path $evalPath -Raw
-        $evalContent | Should Match '\[switch\]\$CpuOnly'
+        $script:evalContent | Should -Match '\[switch\]\$CpuOnly'
     }
 }

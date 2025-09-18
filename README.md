@@ -23,6 +23,7 @@ For automation pipelines that must avoid prompts, call `./scripts/bootstrap.ps1 
 - Run a guarded evaluation sweep with GPU validation: `./scripts/context-sweep.ps1 -Safe -WriteReport` (add `-CpuOnly` only when CUDA resources are unavailable to keep evidence flowing into `docs/CONTEXT_RESULTS_*.md`).
 - Tail combined service logs: `./scripts/compose.ps1 logs`.
 - Run automated smoke tests locally with `pip install -r requirements-dev.txt && pytest`. These checks parse `infra/compose/docker-compose.yml`, verify Modelfiles, and validate `.env.example` defaults. The same suite executes in CI via `.github/workflows/smoke-tests.yml`.
+- If PowerShell is unavailable, run `pytest tests/test_powershell_metadata.py` to mirror the lightweight Pester assertions against the helper scripts.
 - GitHub Actions also boots the stack with the CPU override compose file (`infra/compose/docker-compose.ci.yml`), runs Pester + context sweeps, and captures host state for reproducible evidence.
 
 The compose stack is pinned to `ollama/ollama:0.11.11`, `ghcr.io/open-webui/open-webui:v0.3.7`, and `qdrant/qdrant:v1.15.4`. Update the tags in `infra/compose/docker-compose.yml` after validating new releases.
