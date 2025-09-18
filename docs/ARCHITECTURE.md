@@ -2,7 +2,7 @@
 
 Components (all local, open-source):
 - Ollama (`ollama/ollama:0.3.11`): pulls and runs LLMs locally.
-- Open WebUI (`ghcr.io/open-webui/open-webui:v0.3.7`): chat UI connected to Ollama.
+- Open WebUI (`ghcr.io/open-webui/open-webui:v0.6.30`): chat UI connected to Ollama.
 - Qdrant (`qdrant/qdrant:v1.15.4`): vector database for embeddings/RAG.
 
 Data & Models

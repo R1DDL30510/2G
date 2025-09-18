@@ -45,7 +45,7 @@ For automation pipelines that must avoid prompts, call `./scripts/bootstrap.ps1 
 - If PowerShell is unavailable, run `pytest tests/test_powershell_metadata.py` to mirror the lightweight Pester assertions against the helper scripts.
 - GitHub Actions boots the stack with the CPU override compose file (`infra/compose/docker-compose.ci.yml`), runs Pester, records a plan-only context sweep (the Ollama weights stay local to avoid multi-gigabyte downloads), and captures host state for reproducible evidence.
 
-The compose stack is pinned to `ollama/ollama:0.3.11`, `ghcr.io/open-webui/open-webui:v0.3.7`, and `qdrant/qdrant:v1.15.4`. Update the tags in `infra/compose/docker-compose.yml` after validating new releases.
+The compose stack is pinned to `ollama/ollama:0.3.11`, `ghcr.io/open-webui/open-webui:v0.6.30`, and `qdrant/qdrant:v1.15.4`. Update the tags in `infra/compose/docker-compose.yml` after validating new releases.
 
 ## Diagnostics & Evidence
 - GPU evaluation and host health snapshots initiated from the bootstrap menu are saved in timestamped folders under `docs/evidence/`.
@@ -61,7 +61,7 @@ The compose stack is pinned to `ollama/ollama:0.3.11`, `ghcr.io/open-webui/open-
 
 ## Components
 - Ollama (`ollama/ollama:0.3.11`): Local LLM runtime and model manager
-- Open WebUI (`ghcr.io/open-webui/open-webui:v0.3.7`): Web interface for chat and orchestration
+- Open WebUI (`ghcr.io/open-webui/open-webui:v0.6.30`): Web interface for chat and orchestration
 - Qdrant (`qdrant/qdrant:v1.15.4`): Vector database for embeddings/RAG
 
 See `docs/ARCHITECTURE.md` for details.
