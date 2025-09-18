@@ -2,6 +2,7 @@ param(
     [switch]$WriteReport,
     [switch]$CpuOnly,
     [switch]$Safe,
+    [switch]$PlanOnly,
     [int]$InterRunDelaySec = 5,
     [string]$Profile,
     [int]$GpuCooldownSec = 15
@@ -138,6 +139,9 @@ if (-not $useCpuOnly) {
 }
 
 Write-Host ("Context sweep profile: {0} (safe mode: {1}; cpu only: {2})" -f $Profile, $Safe.IsPresent, $useCpuOnly)
+if ($PlanOnly.IsPresent) {
+    Write-Warning 'Plan-only mode enabled; skipping Ollama evaluation and recording the test plan only.'
+}
 
 $planBase = foreach ($entry in $profiles[$Profile]) {
     $tokens = if ($Safe.IsPresent -and $entry.ContainsKey('TokensSafe')) { $entry.TokensSafe } else { $entry.TokensDefault }
@@ -200,6 +204,20 @@ foreach ($t in $plan) {
     $deviceSuffix = if ($useCpuOnly) { ' [CPU]' } elseif ($t.GpuName) { " [GPU $($t.GpuIndex) - $($t.GpuName)]" } else { " [$deviceLabel]" }
 
     Write-Host ("Testing {0} @ {1} tokens (timeout {2}s){3}" -f $t.Model, $t.Tokens, $t.Timeout, $deviceSuffix)
+    if ($PlanOnly.IsPresent) {
+        $rows += [pscustomobject]@{
+            Model = $t.Model
+            Tokens = $t.Tokens
+            OK = 'plan-only'
+            Latency = 'n/a'
+            Device = $deviceLabel
+            Notes = 'plan-only execution (no Ollama call)'
+        }
+        $lastGpuIndex = $t.GpuIndex
+        if ($InterRunDelaySec -gt 0) { Start-Sleep -Seconds $InterRunDelaySec }
+        continue
+    }
+
     $args = @{
         Model = $t.Model
         TokensTarget = $t.Tokens

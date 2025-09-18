@@ -1,0 +1,2 @@
+# GitHub Actions pulls from the same base list to avoid divergence with local tooling.
+-r base.txt
