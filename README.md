@@ -1,3 +1,4 @@
+
 ﻿# Local AI Infrastructure (Cloud-Independent, OSS)
 
 This repository scaffolds a local, open-source AI stack using Docker Compose. It runs fully on your machine with no cloud dependency.
@@ -77,9 +78,3 @@ See `docs/ARCHITECTURE.md` for details.
 - Each profile pins `num_gpu=1` to avoid dual-GPU brownouts; safe mode further trims token targets for 32k runs.
 - Use the new `-PlanOnly` switch in ephemeral CI to validate the sweep plan without downloading multi-gigabyte Ollama weights.
 - See `docs/CONTEXT_PROFILES.md` for guidance on alternative Ollama models (llama3.2:3b-instruct, phi3.5:mini, mistral-nemo) and how to register custom profiles.
-
-
-
-
-
-

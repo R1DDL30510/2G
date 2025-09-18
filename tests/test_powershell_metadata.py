@@ -49,3 +49,15 @@ def test_eval_context_exposes_cpu_only_switch() -> None:
 def test_eval_context_avoids_process_exit_on_error() -> None:
     content = read_text("scripts/eval-context.ps1")
     assert "exit 1" not in content.lower(), "eval-context.ps1 should not terminate the calling session on failure"
+
+
+def test_powershell_scripts_use_cross_platform_paths() -> None:
+    scripts = [
+        "scripts/compose.ps1",
+        "scripts/bootstrap.ps1",
+        "scripts/clean/bench_ollama.ps1",
+        "scripts/clean/capture_state.ps1",
+    ]
+    for script in scripts:
+        content = read_text(script)
+        assert "infra\\compose" not in content, f"{script} should avoid Windows-only path separators"

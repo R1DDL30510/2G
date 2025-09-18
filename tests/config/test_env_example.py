@@ -31,6 +31,8 @@ def test_env_example_contains_expected_keys() -> None:
     expected_keys = {
         "WEBUI_PORT",
         "OLLAMA_PORT",
+        "OLLAMA_GPU0_PORT",
+        "OLLAMA_GPU1_PORT",
         "QDRANT_PORT",
         "MODELS_DIR",
         "DATA_DIR",
@@ -51,7 +53,7 @@ def test_env_example_contains_expected_keys() -> None:
 
 def test_ports_are_numeric() -> None:
     env = load_env()
-    for key in ("WEBUI_PORT", "OLLAMA_PORT", "QDRANT_PORT"):
+    for key in ("WEBUI_PORT", "OLLAMA_PORT", "OLLAMA_GPU0_PORT", "OLLAMA_GPU1_PORT", "QDRANT_PORT"):
         value = env[key]
         assert value.isdigit(), f"{key} should be a numeric port"
 
