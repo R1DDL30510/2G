@@ -44,3 +44,8 @@ def test_context_sweep_lists_builtin_profiles() -> None:
 def test_eval_context_exposes_cpu_only_switch() -> None:
     content = read_text("scripts/eval-context.ps1")
     assert re.search(r"\[switch\]\$CpuOnly", content)
+
+
+def test_eval_context_avoids_process_exit_on_error() -> None:
+    content = read_text("scripts/eval-context.ps1")
+    assert "exit 1" not in content.lower(), "eval-context.ps1 should not terminate the calling session on failure"

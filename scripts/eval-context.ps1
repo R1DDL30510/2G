@@ -11,7 +11,10 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
+$script:lastCallError = $null
+
 function Call-Ollama([string]$model,[string]$prompt){
+    $script:lastCallError = $null
     $options = @{}
     if ($CpuOnly.IsPresent) { $options['num_gpu'] = 0 }
     elseif ($NumGpu) { $options['num_gpu'] = [int]$NumGpu }
@@ -28,6 +31,7 @@ function Call-Ollama([string]$model,[string]$prompt){
         return ($resp.Content | ConvertFrom-Json)
     }
     catch {
+        $script:lastCallError = $_.Exception.Message
         Write-Verbose ("Request failed: " + $_.Exception.Message)
         return $null
     }
@@ -56,8 +60,8 @@ $out = Call-Ollama -model $Model -prompt $prompt
 $elapsed = ((Get-Date) - $start).TotalSeconds
 
 if (-not $out) {
-    Write-Output ("Model: {0}  OK: {1}  Latency(s): {2:N1}  Asked: S{3}  Expected: {4}  Got: {5}" -f $Model,$false,$elapsed,$askIndex,'n/a','n/a')
-    exit 1
+    $errorDetail = if ($script:lastCallError) { $script:lastCallError } else { 'request failed' }
+    return "ERROR evaluating $Model at $TokensTarget tokens (asked S$askIndex): $errorDetail"
 }
 
 $answer = $out.response.Trim()
