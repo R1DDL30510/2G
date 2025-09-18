@@ -8,7 +8,21 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
-$composeFile = Join-Path $repoRoot 'infra\compose\docker-compose.yml'
+
+function Join-RepoPath {
+    param(
+        [Parameter(Mandatory = $true)][string[]]$Parts
+    )
+
+    $current = $repoRoot
+    foreach ($segment in $Parts) {
+        $current = Join-Path -Path $current -ChildPath $segment
+    }
+
+    return $current
+}
+
+$composeFile = Join-RepoPath -Parts @('infra', 'compose', 'docker-compose.yml')
 
 function Assert-LastExitCode {
     param(
