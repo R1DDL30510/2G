@@ -55,6 +55,9 @@ def request_ok(url: str, timeout: float) -> bool:
     except urllib.error.URLError as exc:
         print(f"{url} not reachable: {exc.reason}")
         return False
+    except ConnectionError as exc:
+        print(f"{url} connection error: {exc}")
+        return False
 
 
 def poll_url(url: str, retries: int, delay: float, timeout: float) -> bool:
