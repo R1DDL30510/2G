@@ -8,7 +8,7 @@
 | Service | Image & Version | Role | Windows Host Port |
 |---------|-----------------|------|-------------------|
 | Ollama | `ollama/ollama:0.3.11` | Local LLM runtime and model manager. | `11434` | 【F:README.md†L41-L44】【F:infra/compose/docker-compose.yml†L1-L14】
-| Open WebUI | `ghcr.io/open-webui/open-webui:v0.3.7` | Chat and orchestration UI backed by Ollama. | `3000` | 【F:README.md†L15-L16】【F:infra/compose/docker-compose.yml†L16-L28】
+| Open WebUI | `ghcr.io/open-webui/open-webui:v0.6.30` | Chat and orchestration UI backed by Ollama. | `3000` | 【F:README.md†L15-L16】【F:infra/compose/docker-compose.yml†L16-L28】
 | Qdrant | `qdrant/qdrant:v1.15.4` | Vector store for embeddings/RAG flows. | `6333` | 【F:README.md†L41-L44】【F:infra/compose/docker-compose.yml†L29-L35】
 
 Data folders (`data/`, `models/`, `docs/evidence/`) are created by the bootstrap script and map into the containers for persistence. 【F:scripts/bootstrap.ps1†L366-L376】【F:README.md†L48-L50】

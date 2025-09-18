@@ -172,7 +172,7 @@ def test_gpu_overlay_pins_isolated_devices() -> None:
         for pair in expected_pairs:
             assert pair in environment, f"{name} GPU overlay environment missing {pair}"
 
-        expected_gpus = "${" + allocation_key + ":-1}"
+        expected_gpus = "${" + allocation_key + ":-device=" + default_device + "}"
         assert service.get("gpus") == expected_gpus, f"{name} GPU allocation should request a single device"
 
 

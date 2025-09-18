@@ -12,7 +12,7 @@
 | Service | Container Image | Purpose | Persistent Data |
 |---------|-----------------|---------|-----------------|
 | Ollama | `ollama/ollama:0.3.11` | Hosts local LLMs, exposes generate API on `11434/tcp`. | `models/` cache plus read-only `modelfiles/` for custom variants. |
-| Open WebUI | `ghcr.io/open-webui/open-webui:v0.3.7` | Browser-based chat UI that proxies to Ollama. | `data/open-webui/` for settings and history. |
+| Open WebUI | `ghcr.io/open-webui/open-webui:v0.6.30` | Browser-based chat UI that proxies to Ollama. | `data/open-webui/` for settings and history. |
 | Qdrant | `qdrant/qdrant:v1.15.4` | Vector database backing RAG workflows. | `data/qdrant/` volume for collections. |
 
 ### Orchestration & Configuration
