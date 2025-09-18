@@ -7,11 +7,12 @@ from typing import Dict, List
 
 ROOT = Path(__file__).resolve().parents[2]
 COMPOSE_PATH = ROOT / "infra" / "compose" / "docker-compose.yml"
+GPU_COMPOSE_PATH = ROOT / "infra" / "compose" / "docker-compose.gpu.yml"
 
 
-def parse_services() -> Dict[str, Dict[str, object]]:
+def parse_services(path: Path = COMPOSE_PATH) -> Dict[str, Dict[str, object]]:
     """Parse the compose file using indentation-aware heuristics."""
-    lines = COMPOSE_PATH.read_text(encoding="utf-8").splitlines()
+    lines = path.read_text(encoding="utf-8").splitlines()
     services: Dict[str, Dict[str, object]] = {}
     in_services = False
     current_service: str | None = None
@@ -71,6 +72,7 @@ def parse_services() -> Dict[str, Dict[str, object]]:
 
 
 SERVICES_CACHE = parse_services()
+GPU_SERVICES_CACHE = parse_services(GPU_COMPOSE_PATH)
 
 
 def test_compose_declares_expected_services() -> None:
@@ -97,16 +99,39 @@ def test_open_webui_depends_on_ollama() -> None:
 
 
 
-def test_ollama_is_gpu_enabled_and_exposes_expected_mounts() -> None:
+def test_ollama_defaults_to_cpu_mode() -> None:
     ollama = SERVICES_CACHE["ollama"]
 
-    assert ollama.get("gpus") == "all", "ollama service must request GPU resources"
+    assert ollama.get("gpus") is None, "ollama should not request GPUs by default"
 
     environment: List[str] = ollama.get("environment", [])  # type: ignore[assignment]
     assert any(entry == "OLLAMA_HOST=0.0.0.0" for entry in environment), "OLLAMA_HOST must be bound to 0.0.0.0"
+    assert (
+        "OLLAMA_USE_CPU=${OLLAMA_USE_CPU:-true}" in environment
+    ), "OLLAMA must default to CPU mode"
+    assert not any(
+        entry.startswith("NVIDIA_VISIBLE_DEVICES") for entry in environment
+    ), "CPU default must not request NVIDIA devices"
 
     volumes: List[str] = ollama.get("volumes", [])  # type: ignore[assignment]
     assert any("../../modelfiles" in volume for volume in volumes), "ollama volume mounts must include modelfiles"
+
+
+def test_gpu_overlay_requests_cuda_resources() -> None:
+    ollama = GPU_SERVICES_CACHE["ollama"]
+
+    assert (
+        ollama.get("gpus") == "${OLLAMA_GPU_ALLOCATION:-all}"
+    ), "GPU overlay must request GPU resources"
+
+    environment: List[str] = ollama.get("environment", [])  # type: ignore[assignment]
+    expected_pairs = {
+        "NVIDIA_VISIBLE_DEVICES=${OLLAMA_VISIBLE_GPUS:-all}",
+        "NVIDIA_DRIVER_CAPABILITIES=compute,utility",
+        "OLLAMA_USE_CPU=${OLLAMA_USE_CPU:-false}",
+    }
+    for pair in expected_pairs:
+        assert pair in environment, f"GPU overlay environment missing {pair}"
 
 
 
