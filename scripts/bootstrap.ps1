@@ -59,8 +59,9 @@ function Get-EnvValue {
         return $null
     }
     foreach ($line in Get-Content $envFile) {
-        if ($line -match "^\s*$([regex]::Escape($Key))=(.+)$") {
-            return $Matches[1]
+        $pattern = ("^\s*{0}\s*=\s*(.+)$" -f [regex]::Escape($Key))
+        if ($line -match $pattern) {
+            return $Matches[1].Trim()
         }
     }
     return $null
@@ -68,7 +69,8 @@ function Get-EnvValue {
 
 function Get-EvidenceRoot {
     $configured = Get-EnvValue -Key 'EVIDENCE_ROOT'
-    $null = Ensure-EnvEntry -Path $envLocal -Key 'CONTEXT_SWEEP_PROFILE' -DefaultValue 'llama31-long' -Comment 'Default context sweep profile (llama31-long, qwen3-balanced, cpu-baseline).' -PromptValue:$PromptSecrets
+    $envLocalPath = Join-Path $repoRoot '.env'
+    $null = Ensure-EnvEntry -Path $envLocalPath -Key 'CONTEXT_SWEEP_PROFILE' -DefaultValue 'llama31-long' -Comment 'Default context sweep profile (llama31-long, qwen3-balanced, cpu-baseline).' -PromptValue:$PromptSecrets
     if ($configured) {
         if ([System.IO.Path]::IsPathRooted($configured)) {
             return $configured
@@ -368,6 +370,7 @@ function Invoke-WorkspaceProvisioning {
     $null = Ensure-EnvEntry -Path $envLocal -Key 'OLLAMA_BENCH_MODEL' -DefaultValue 'llama3.1:8b' -Comment 'Default model targeted by scripts/clean/bench_ollama.ps1.' -PromptValue:$PromptSecrets
     $null = Ensure-EnvEntry -Path $envLocal -Key 'OLLAMA_BENCH_PROMPT' -DefaultValue './docs/prompts/bench-default.txt' -Comment 'Prompt file consumed by bench_ollama.ps1 during latency sampling.' -PromptValue:$PromptSecrets
     $null = Ensure-EnvEntry -Path $envLocal -Key 'EVIDENCE_ROOT' -DefaultValue './docs/evidence' -Comment 'Destination directory for diagnostics artifacts.' -PromptValue:$PromptSecrets
+    $null = Ensure-EnvEntry -Path $envLocal -Key 'CONTEXT_SWEEP_PROFILE' -DefaultValue 'llama31-long' -Comment 'Default context sweep profile (llama31-long, qwen3-balanced, cpu-baseline).' -PromptValue:$PromptSecrets
 
     foreach ($directory in @('data', 'models')) {
         Ensure-Directory -Path (Join-Path $repoRoot $directory)
