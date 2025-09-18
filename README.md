@@ -17,6 +17,19 @@ Optional: Python 3.10+, Node.js LTS, PowerShell 7 for scripts.
 
 GPU hosts should layer the GPU overlay when starting the stack directly with Docker Compose: `docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.gpu.yml up -d`. The base file now defaults Ollama to CPU mode so CI and non-NVIDIA machines can boot the stack without errors; the overlay re-enables CUDA by requesting GPU resources and restoring the NVIDIA environment variables.
 
+### Multi-GPU endpoints
+- `infra/compose/docker-compose.yml` now exposes three Ollama services:
+  - `ollama` (shared queue, defaults to `OLLAMA_PORT`, still backing Open WebUI)
+  - `ollama-gpu0` bound to `OLLAMA_GPU0_PORT` (defaults to `11435`)
+  - `ollama-gpu1` bound to `OLLAMA_GPU1_PORT` (defaults to `11436`)
+- Layering `infra/compose/docker-compose.gpu.yml` pins each isolated instance to its GPU by exporting `NVIDIA_VISIBLE_DEVICES` and requesting a single device.
+- Override the port bindings or GPU visibility by editing `.env` before launching the stack.
+
+### Sequential chaining helper
+- `scripts/ollama_chain.py` executes a chain-of-experts workflow without keeping multiple models resident in VRAM. Supply the initial prompt via `--prompt` or `--prompt-file` and repeat `--step model[@endpoint][#directive]` for each stage.
+- Example: `python scripts/ollama_chain.py --prompt "Plane eine API" --step "deepseek-coder:6.7b@http://localhost:11435#Implementiere die API" --step "qwen2.5-coder:7b@http://localhost:11436#Code-Review" --step "llama3.1:8b#Schreibe die Doku"`.
+- Add `--transcript transcript.md` to persist the full conversation for audits.
+
 For automation pipelines that must avoid prompts, call `./scripts/bootstrap.ps1 -NoMenu` to skip the interactive menu once provisioning is complete.
 
 ## Validation & Health Checks
