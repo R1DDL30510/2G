@@ -43,10 +43,10 @@ jobs:
       - name: Probe service health
         run: |
           echo "Waiting for services to initialise"
-          sleep 20
-          curl --fail http://localhost:11434/api/version
-          curl --fail http://localhost:6333/collections
-          curl --fail http://localhost:3000 | head -n 1
+          python scripts/wait_for_http.py --retries 36 --delay 5 --timeout 5 \
+            http://localhost:11434/api/version \
+            http://localhost:6333/collections \
+            http://localhost:3000
 
       - name: Run context sweep (safe CPU profile)
         shell: pwsh
