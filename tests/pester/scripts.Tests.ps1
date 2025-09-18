@@ -50,3 +50,18 @@ Describe 'context evaluation tooling' {
         ($script:evalContent -match '\[switch\]\$CpuOnly') | Should -BeTrue
     }
 }
+
+Describe 'scripts/clean/prune_evidence.ps1' {
+    BeforeAll {
+        $script:prunePath = Join-Path -Path $repoRoot -ChildPath 'scripts/clean/prune_evidence.ps1'
+        $script:pruneContent = Get-Content -Path $script:prunePath -Raw
+    }
+
+    It 'defines Keep parameter with default of 5' {
+        ($script:pruneContent -match "\[int\]\$Keep = 5") | Should -BeTrue
+    }
+
+    It 'reads EVIDENCE_ROOT from .env when Root not provided' {
+        ($script:pruneContent -match "Get-EnvValue -Key 'EVIDENCE_ROOT'") | Should -BeTrue
+    }
+}
