@@ -7,7 +7,7 @@
 ## Stack Components at a Glance
 | Service | Image & Version | Role | Windows Host Port |
 |---------|-----------------|------|-------------------|
-| Ollama | `ollama/ollama:0.3.14` | Local LLM runtime and model manager. | `11434` | 【F:README.md†L41-L44】【F:infra/compose/docker-compose.yml†L1-L14】
+| Ollama | `ollama/ollama:0.3.11` | Local LLM runtime and model manager. | `11434` | 【F:README.md†L41-L44】【F:infra/compose/docker-compose.yml†L1-L14】
 | Open WebUI | `ghcr.io/open-webui/open-webui:v0.3.7` | Chat and orchestration UI backed by Ollama. | `3000` | 【F:README.md†L15-L16】【F:infra/compose/docker-compose.yml†L16-L28】
 | Qdrant | `qdrant/qdrant:v1.15.4` | Vector store for embeddings/RAG flows. | `6333` | 【F:README.md†L41-L44】【F:infra/compose/docker-compose.yml†L29-L35】
 

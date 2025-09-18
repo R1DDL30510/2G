@@ -4,10 +4,37 @@ if (-not $PSScriptRoot) {
 
 $repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 
+if (-not $repoRoot) {
+    throw "Unable to resolve repository root from PSScriptRoot: $PSScriptRoot"
+}
+
+if (-not (Test-Path -Path $repoRoot -PathType Container)) {
+    throw "Resolved repository root does not exist: $repoRoot"
+}
+
+function Get-RequiredFileContent {
+    param (
+        [Parameter(Mandatory = $true)]
+        [ValidateNotNullOrEmpty()]
+        [string] $RelativePath
+    )
+
+    $fullPath = Join-Path -Path $repoRoot -ChildPath $RelativePath
+
+    if (-not $fullPath) {
+        throw "Failed to build a path for '$RelativePath' from repository root '$repoRoot'."
+    }
+
+    if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
+        throw "Required file not found: $fullPath"
+    }
+
+    return Get-Content -LiteralPath $fullPath -Raw
+}
+
 Describe 'scripts/compose.ps1' {
     BeforeAll {
-        $script:composePath = Join-Path -Path $repoRoot -ChildPath 'scripts/compose.ps1'
-        $script:composeContent = Get-Content -Path $script:composePath -Raw
+        $script:composeContent = Get-RequiredFileContent -RelativePath 'scripts/compose.ps1'
     }
 
     It 'declares expected actions' {
@@ -17,8 +44,7 @@ Describe 'scripts/compose.ps1' {
 
 Describe 'scripts/bootstrap.ps1' {
     BeforeAll {
-        $script:bootstrapPath = Join-Path -Path $repoRoot -ChildPath 'scripts/bootstrap.ps1'
-        $script:bootstrapContent = Get-Content -Path $script:bootstrapPath -Raw
+        $script:bootstrapContent = Get-RequiredFileContent -RelativePath 'scripts/bootstrap.ps1'
     }
 
     It 'supports PromptSecrets switch' {

@@ -9,7 +9,7 @@ param(
 $ErrorActionPreference = 'Stop'
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $repoRoot = Split-Path -Parent (Split-Path -Parent $scriptRoot)
-$composeFile = Join-Path $repoRoot 'infra\compose\docker-compose.yml'
+$composeFile = [System.IO.Path]::Combine($repoRoot, 'infra', 'compose', 'docker-compose.yml')
 
 function Ensure-Directory {
     param([Parameter(Mandatory = $true)][string]$Path)

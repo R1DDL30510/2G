@@ -5,7 +5,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $repoRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
-$composeFile = Join-Path $repoRoot 'infra\compose\docker-compose.yml'
+$composeFile = [System.IO.Path]::Combine($repoRoot, 'infra', 'compose', 'docker-compose.yml')
 
 if (-not (Test-Path $composeFile)) {
     Write-Error "Compose file not found at: $composeFile`nEnsure you are using the repo at $repoRoot"
