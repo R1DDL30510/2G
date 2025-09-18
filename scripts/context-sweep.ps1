@@ -269,4 +269,3 @@ if ($WriteReport) {
     Set-Content -Path $reportPath -Value ($md -join "`n") -Encoding UTF8
     Write-Output ("Wrote report: " + $reportPath)
 }
-}
