@@ -44,6 +44,7 @@ Describe 'scripts/compose.ps1' {
 
 Describe 'scripts/bootstrap.ps1' {
     BeforeAll {
+
         $script:bootstrapContent = Get-RequiredFileContent -RelativePath 'scripts/bootstrap.ps1'
     }
 
@@ -74,6 +75,7 @@ Describe 'context evaluation tooling' {
 
     It 'eval-context exposes CpuOnly switch' {
         ($script:evalContent -match '\[switch\]\$CpuOnly') | Should -BeTrue
+
     }
 }
 

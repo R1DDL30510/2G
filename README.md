@@ -15,13 +15,28 @@ Optional: Python 3.10+, Node.js LTS, PowerShell 7 for scripts.
 3. Start the stack: `./scripts/compose.ps1 up` (PowerShell).
 4. Open WebUI: http://localhost:3000 (connects to local Ollama at http://localhost:11434).
 
-GPU hosts should layer the GPU overlay when starting the stack directly with Docker Compose: `docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.gpu.yml up -d`. The base file now defaults Ollama to CPU mode so CI and non-NVIDIA machines can boot the stack without errors; the overlay re-enables CUDA by requesting GPU resources and restoring the NVIDIA environment variables while pinning visibility to GPU index 1 (sized for the RTX 3060).
+
+GPU hosts should layer the GPU overlay when starting the stack directly with Docker Compose: `docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.gpu.yml up -d`. The base file now defaults Ollama to CPU mode so CI and non-NVIDIA machines can boot the stack without errors; the overlay re-enables CUDA by requesting GPU resources and restoring the NVIDIA environment variables.
+
+### Multi-GPU endpoints
+- `infra/compose/docker-compose.yml` now exposes three Ollama services:
+  - `ollama` (shared queue, defaults to `OLLAMA_PORT`, still backing Open WebUI)
+  - `ollama-gpu0` bound to `OLLAMA_GPU0_PORT` (defaults to `11435`)
+  - `ollama-gpu1` bound to `OLLAMA_GPU1_PORT` (defaults to `11436`)
+- Layering `infra/compose/docker-compose.gpu.yml` pins each isolated instance to its GPU by exporting `NVIDIA_VISIBLE_DEVICES` and requesting a single device.
+- Override the port bindings or GPU visibility by editing `.env` before launching the stack.
+
+### Sequential chaining helper
+- `scripts/ollama_chain.py` executes a chain-of-experts workflow without keeping multiple models resident in VRAM. Supply the initial prompt via `--prompt` or `--prompt-file` and repeat `--step model[@endpoint][#directive]` for each stage.
+- Example: `python scripts/ollama_chain.py --prompt "Plane eine API" --step "deepseek-coder:6.7b@http://localhost:11435#Implementiere die API" --step "qwen2.5-coder:7b@http://localhost:11436#Code-Review" --step "llama3.1:8b#Schreibe die Doku"`.
+- Add `--transcript transcript.md` to persist the full conversation for audits.
 
 For automation pipelines that must avoid prompts, call `./scripts/bootstrap.ps1 -NoMenu` to skip the interactive menu once provisioning is complete.
 
 ## Validation & Health Checks
 - Generate a host environment fingerprint with `./scripts/bootstrap.ps1 -Report` (writes `docs/ENVIRONMENT.md` **and** archives the same output under `docs/evidence/environment/`). The report now checks for `curl`, `pytest`, `nvidia-smi`, and `ollama` in addition to the original tooling list.
 - Launch the interactive diagnostics menu explicitly with `./scripts/bootstrap.ps1 -Menu`. The menu exposes GPU evaluation, host checks, and the imported Clean repository utilities.
+
 - Run a guarded evaluation sweep with GPU validation: `./scripts/context-sweep.ps1 -Safe -WriteReport` (add `-CpuOnly` only when CUDA resources are unavailable to keep evidence flowing into `docs/CONTEXT_RESULTS_*.md`).
 - Run local pre-commit checks before pushing: `./scripts/precommit.ps1 -Mode quick` (add `-InstallPythonDeps -InstallPester` on first run). Use `./scripts/precommit.ps1 -Mode full -Gpu` for parity with CI when GPUs are available.
 - Install a Git hook that enforces the quick gate automatically via `./scripts/hooks/install-precommit.ps1` (pass `-Mode full` or `-Gpu` to customize).

@@ -1,7 +1,24 @@
 services:
   ollama:
     environment:
-      - NVIDIA_VISIBLE_DEVICES=${OLLAMA_VISIBLE_GPUS:-1}
+      - OLLAMA_HOST=0.0.0.0
+      - NVIDIA_VISIBLE_DEVICES=${OLLAMA_VISIBLE_GPUS:-all}
       - NVIDIA_DRIVER_CAPABILITIES=compute,utility
       - OLLAMA_USE_CPU=${OLLAMA_USE_CPU:-false}
-    gpus: ${OLLAMA_GPU_ALLOCATION:-device=1}
+    gpus: ${OLLAMA_GPU_ALLOCATION:-all}
+
+  ollama-gpu0:
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+      - NVIDIA_VISIBLE_DEVICES=${OLLAMA_GPU0_VISIBLE_GPUS:-0}
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - OLLAMA_USE_CPU=${OLLAMA_GPU0_USE_CPU:-false}
+    gpus: ${OLLAMA_GPU0_GPU_ALLOCATION:-1}
+
+  ollama-gpu1:
+    environment:
+      - OLLAMA_HOST=0.0.0.0
+      - NVIDIA_VISIBLE_DEVICES=${OLLAMA_GPU1_VISIBLE_GPUS:-1}
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+      - OLLAMA_USE_CPU=${OLLAMA_GPU1_USE_CPU:-false}
+    gpus: ${OLLAMA_GPU1_GPU_ALLOCATION:-1}
