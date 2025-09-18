@@ -1,62 +1,69 @@
-if (-not $PSScriptRoot) {
+if (-not ) {
     throw 'PSScriptRoot was not populated; unable to determine repository root.'
 }
 
-$testsDirectory = [System.IO.Directory]::GetParent($PSScriptRoot)
-if ($null -eq $testsDirectory) {
-    throw "Unable to locate tests directory from '$PSScriptRoot'."
-}
+function Get-RepoRoot {
+    param([string])
 
-$repositoryDirectory = [System.IO.Directory]::GetParent($testsDirectory.FullName)
-if ($null -eq $repositoryDirectory) {
-    throw "Unable to resolve repository root from '$($testsDirectory.FullName)'."
-}
+     = [System.IO.Path]::GetDirectoryName()
+    if (-not ) {
+        throw "Unable to locate tests directory from ''."
+    }
 
-$script:RepoRoot = $repositoryDirectory.FullName
+     = [System.IO.Path]::GetDirectoryName()
+    if (-not ) {
+        throw "Unable to resolve repository root from ''."
+    }
+
+    return 
+}
 
 Describe 'scripts/compose.ps1' {
     BeforeAll {
-        $script:composePath = [System.IO.Path]::Combine($script:RepoRoot, 'scripts', 'compose.ps1')
-        $script:composeContent = [System.IO.File]::ReadAllText($script:composePath)
+         = Get-RepoRoot -StartPath 
+         = Join-Path (Join-Path  'scripts') 'compose.ps1'
+         = Get-Content -Path  -Raw
     }
 
     It 'declares expected actions' {
-        ($script:composeContent -match "ValidateSet\('up','down','restart','logs'\)") | Should -BeTrue
+        ( -match "ValidateSet\('up','down','restart','logs'\)") | Should -BeTrue
     }
 }
 
 Describe 'scripts/bootstrap.ps1' {
     BeforeAll {
-        $script:bootstrapPath = [System.IO.Path]::Combine($script:RepoRoot, 'scripts', 'bootstrap.ps1')
-        $script:bootstrapContent = [System.IO.File]::ReadAllText($script:bootstrapPath)
+         = Get-RepoRoot -StartPath 
+         = Join-Path (Join-Path  'scripts') 'bootstrap.ps1'
+         = Get-Content -Path  -Raw
     }
 
     It 'supports PromptSecrets switch' {
-        ($script:bootstrapContent -match '\[switch\]\$PromptSecrets') | Should -BeTrue
+        ( -match '\[switch\]\') | Should -BeTrue
     }
 
     It 'initialises context sweep profile entry' {
-        $pattern = '(?s)function\s+Invoke-WorkspaceProvisioning.*?Ensure-EnvEntry\s+-Path\s+\$envLocal\s+-Key\s+''CONTEXT_SWEEP_PROFILE'''
-        ($script:bootstrapContent -match $pattern) | Should -BeTrue
+         = '(?s)function\s+Invoke-WorkspaceProvisioning.*?Ensure-EnvEntry\s+-Path\s+\\s+-Key\s+''CONTEXT_SWEEP_PROFILE'''
+        ( -match ) | Should -BeTrue
     }
 }
 
 Describe 'context evaluation tooling' {
     BeforeAll {
-        $script:sweepPath = [System.IO.Path]::Combine($script:RepoRoot, 'scripts', 'context-sweep.ps1')
-        $script:sweepContent = [System.IO.File]::ReadAllText($script:sweepPath)
-        $script:evalPath = [System.IO.Path]::Combine($script:RepoRoot, 'scripts', 'eval-context.ps1')
-        $script:evalContent = [System.IO.File]::ReadAllText($script:evalPath)
+         = Get-RepoRoot -StartPath 
+         = Join-Path (Join-Path  'scripts') 'context-sweep.ps1'
+         = Get-Content -Path  -Raw
+         = Join-Path (Join-Path  'scripts') 'eval-context.ps1'
+         = Get-Content -Path  -Raw
     }
 
     It 'context sweep exposes built-in profiles' {
-        foreach ($profile in @('llama31-long','qwen3-balanced','cpu-baseline')) {
-            $pattern = [regex]::Escape($profile)
-            ($script:sweepContent -match $pattern) | Should -BeTrue
+        foreach (C:\Users\MvP\OneDrive\Dokumente\PowerShell\Microsoft.PowerShell_profile.ps1 in @('llama31-long','qwen3-balanced','cpu-baseline')) {
+             = [regex]::Escape(C:\Users\MvP\OneDrive\Dokumente\PowerShell\Microsoft.PowerShell_profile.ps1)
+            ( -match ) | Should -BeTrue
         }
     }
 
     It 'eval-context exposes CpuOnly switch' {
-        ($script:evalContent -match '\[switch\]\$CpuOnly') | Should -BeTrue
+        ( -match '\[switch\]\') | Should -BeTrue
     }
 }

@@ -1,4 +1,4 @@
-param(
+﻿param(
     [ValidateSet('quick', 'full')]
     [string]$Mode = 'quick',
     [switch]$InstallPythonDeps,
@@ -62,31 +62,6 @@ function Ensure-EnvFile {
     }
 }
 
-function Ensure-Pester {
-    param(
-        [string]$MinVersion = '5.0.0',
-        [string]$VendorRoot
-    )
-    if (-not $VendorRoot) { $VendorRoot = Join-Path $repoRoot 'scripts/vendor/Modules' }
-    try { Import-Module Pester -MinimumVersion $MinVersion -ErrorAction Stop; return $true } catch {}
-    if (-not (Test-Path $VendorRoot)) { try { New-Item -ItemType Directory -Path $VendorRoot -Force | Out-Null } catch {} }
-    $env:PSModulePath = "$VendorRoot;" + $env:PSModulePath
-    $candidate = Get-ChildItem -Path (Join-Path $VendorRoot 'Pester') -Directory -ErrorAction SilentlyContinue | Sort-Object Name -Descending | Select-Object -First 1
-    if ($candidate) {
-        $psd1 = Get-ChildItem -Path $candidate.FullName -Filter 'Pester.psd1' -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-        if ($psd1) { try { Import-Module $psd1.FullName -MinimumVersion $MinVersion -ErrorAction Stop; return $true } catch {} }
-    }
-    if (Get-Command Save-Module -ErrorAction SilentlyContinue) {
-        try {
-            Save-Module -Name Pester -RequiredVersion $MinVersion -Path $VendorRoot -Force -ErrorAction Stop
-            $psd1 = Get-ChildItem -Path (Join-Path $VendorRoot 'Pester') -Filter 'Pester.psd1' -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
-            if ($psd1) { Import-Module $psd1.FullName -ErrorAction Stop; return $true }
-        } catch { Write-Warning ('Failed to vendor Pester: ' + $_.Exception.Message) }
-    }
-    return $false
-}
-
-
 $settings = switch ($Mode) {
     'quick' { @{ RunPytest = $true; RunPester = $true; Compose = $false; Sweep = $false; CaptureState = $false; CpuOnly = $true } }
     'full'  { @{ RunPytest = $true; RunPester = $true; Compose = $true; Sweep = $true; CaptureState = $true; CpuOnly = -not $Gpu.IsPresent } }
@@ -143,11 +118,8 @@ if ($settings.RunPytest) {
 
 if ($settings.RunPester) {
     Invoke-Step "Run Pester" {
-        if (Ensure-Pester -MinVersion '5.0.0') {
+        Import-Module Pester -MinimumVersion 5 -ErrorAction Stop
         Invoke-Pester -Script (Join-Path $repoRoot 'tests/pester') -Output Detailed
-      } else {
-        Write-Warning 'Pester not installed and cannot be vendored; skipping Pester tests.'
-      }
     }
 }
 
@@ -182,11 +154,11 @@ if ($settings.Compose) {
         }
 
         if ($settings.Sweep) {
-            $sweepParams = @{ Safe = $true; WriteReport = $true }
-            if ($settings.CpuOnly) { $sweepParams['CpuOnly'] = $true }
-            if ($Gpu) { $sweepParams['Profile'] = 'llama31-long' }
+            $sweepArgs = @('-Safe', '-WriteReport')
+            if ($settings.CpuOnly) { $sweepArgs += '-CpuOnly' }
+            if ($Gpu) { $sweepArgs += '-Profile'; $sweepArgs += 'llama31-long' }
             Invoke-Step "Context sweep" {
-                & (Join-Path $repoRoot 'scripts/context-sweep.ps1') @sweepParams
+                & (Join-Path $repoRoot 'scripts/context-sweep.ps1') @sweepArgs
                 if ($LASTEXITCODE -ne 0) { throw "Context sweep failed" }
             }
         }
@@ -206,13 +178,6 @@ if ($settings.Compose) {
 }
 
 Write-Host "Pre-commit checks completed successfully." -ForegroundColor Green
-
-
-
-
-
-
-
 
 
 
