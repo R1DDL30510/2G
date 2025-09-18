@@ -50,3 +50,27 @@ Describe 'context evaluation tooling' {
         ($script:evalContent -match '\[switch\]\$CpuOnly') | Should -BeTrue
     }
 }
+
+Describe 'scripts/clean/prune_evidence.ps1' {
+    BeforeAll {
+        $script:prunePath = Join-Path -Path $repoRoot -ChildPath 'scripts/clean/prune_evidence.ps1'
+        $script:pruneContent = Get-Content -Path $script:prunePath -Raw
+    }
+
+    It 'exposes retention parameters' {
+        foreach ($param in @('RetentionDays','KeepLatest','DryRun')) {
+            $pattern = "\[$([regex]::Escape('int'))\]\$$param"
+            if ($param -eq 'DryRun') {
+                $pattern = '\[switch\]\$DryRun'
+            }
+            ($script:pruneContent -match $pattern) | Should -BeTrue
+        }
+    }
+
+    It 'reads evidence configuration from .env' {
+        foreach ($key in @('EVIDENCE_ROOT','EVIDENCE_RETENTION_DAYS','EVIDENCE_KEEP_LATEST')) {
+            $pattern = [regex]::Escape($key)
+            ($script:pruneContent -match $pattern) | Should -BeTrue
+        }
+    }
+}

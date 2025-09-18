@@ -34,12 +34,17 @@ def test_env_example_contains_expected_keys() -> None:
         "QDRANT_PORT",
         "MODELS_DIR",
         "DATA_DIR",
+        "OLLAMA_VISIBLE_GPUS",
+        "OLLAMA_GPU_ALLOCATION",
+        "OLLAMA_DEFAULT_GPU",
         "OPENWEBUI_AUTH",
         "OLLAMA_API_KEY",
         "OLLAMA_BASE_URL",
         "OLLAMA_BENCH_MODEL",
         "OLLAMA_BENCH_PROMPT",
         "EVIDENCE_ROOT",
+        "EVIDENCE_RETENTION_DAYS",
+        "EVIDENCE_KEEP_LATEST",
         "LOG_FILE",
     }
     missing = expected_keys.difference(env)
@@ -51,6 +56,13 @@ def test_ports_are_numeric() -> None:
     for key in ("WEBUI_PORT", "OLLAMA_PORT", "QDRANT_PORT"):
         value = env[key]
         assert value.isdigit(), f"{key} should be a numeric port"
+
+
+def test_gpu_defaults_are_explicit() -> None:
+    env = load_env()
+    assert env["OLLAMA_VISIBLE_GPUS"] == "1", "OLLAMA_VISIBLE_GPUS should default to GPU index 1"
+    assert env["OLLAMA_GPU_ALLOCATION"] == "device=1", "OLLAMA_GPU_ALLOCATION should target GPU 1"
+    assert env["OLLAMA_DEFAULT_GPU"] == "1", "OLLAMA_DEFAULT_GPU should mirror the preferred device"
 
 
 def test_prompt_reference_exists() -> None:
@@ -67,3 +79,10 @@ def test_relative_directories_are_not_absolute() -> None:
     for key in ("MODELS_DIR", "DATA_DIR", "EVIDENCE_ROOT", "LOG_FILE"):
         value = env[key]
         assert value.startswith("."), f"{key} should use a repository-relative path"
+
+
+def test_evidence_retention_defaults_are_positive() -> None:
+    env = load_env()
+    for key in ("EVIDENCE_RETENTION_DAYS", "EVIDENCE_KEEP_LATEST"):
+        value = env[key]
+        assert value.isdigit() and int(value) >= 0, f"{key} must be a non-negative integer"
