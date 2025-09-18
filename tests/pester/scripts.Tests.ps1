@@ -1,14 +1,4 @@
-$script:here = if ($PesterScriptRoot) {
-    $PesterScriptRoot
-} elseif ($MyInvocation.MyCommand.Path) {
-    Split-Path -Parent $MyInvocation.MyCommand.Path
-} else {
-    (Get-Location).ProviderPath
-}
-
-$script:repoRoot = [System.IO.Path]::GetFullPath(
-    [System.IO.Path]::Combine($script:here, '..', '..')
-)
+$script:repoRoot = Split-Path -Parent (Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path))
 
 Describe 'scripts/compose.ps1' {
     BeforeAll {
@@ -34,7 +24,6 @@ Describe 'scripts/bootstrap.ps1' {
     It 'initialises context sweep profile entry' {
         $pattern = '(?s)function\s+Invoke-WorkspaceProvisioning.*?Ensure-EnvEntry\s+-Path\s+\$envLocal\s+-Key\s+''CONTEXT_SWEEP_PROFILE'''
         $script:bootstrapContent | Should -Match $pattern
-
     }
 }
 
