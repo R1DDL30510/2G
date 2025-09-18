@@ -5,7 +5,7 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$repoRoot = Split-Path -Parent $scriptRoot
+$repoRoot = Split-Path -Parent (Split-Path -Parent $scriptRoot)
 
 function Ensure-Directory {
     param([Parameter(Mandatory = $true)][string]$Path)
