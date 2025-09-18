@@ -18,7 +18,8 @@ Describe 'scripts/bootstrap.ps1' {
     }
 
     It 'initialises context sweep profile entry' {
-        $bootstrapContent | Should Match 'CONTEXT_SWEEP_PROFILE'
+        $pattern = '(?s)function\s+Invoke-WorkspaceProvisioning.*?Ensure-EnvEntry\s+-Path\s+\$envLocal\s+-Key\s+''CONTEXT_SWEEP_PROFILE'''
+        $bootstrapContent | Should Match $pattern
     }
 }
 
