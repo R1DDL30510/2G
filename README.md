@@ -1,4 +1,4 @@
-# Local AI Infrastructure (Cloud-Independent, OSS)
+﻿# Local AI Infrastructure (Cloud-Independent, OSS)
 
 This repository scaffolds a local, open-source AI stack using Docker Compose. It runs fully on your machine with no cloud dependency.
 
@@ -23,6 +23,8 @@ For automation pipelines that must avoid prompts, call `./scripts/bootstrap.ps1 
 - Generate a host environment fingerprint with `./scripts/bootstrap.ps1 -Report` (writes `docs/ENVIRONMENT.md` **and** archives the same output under `docs/evidence/environment/`). The report now checks for `curl`, `pytest`, `nvidia-smi`, and `ollama` in addition to the original tooling list.
 - Launch the interactive diagnostics menu explicitly with `./scripts/bootstrap.ps1 -Menu`. The menu exposes GPU evaluation, host checks, and the imported Clean repository utilities.
 - Run a guarded evaluation sweep with GPU validation: `./scripts/context-sweep.ps1 -Safe -WriteReport` (add `-CpuOnly` only when CUDA resources are unavailable to keep evidence flowing into `docs/CONTEXT_RESULTS_*.md`).
+- Run local pre-commit checks before pushing: `./scripts/precommit.ps1 -Mode quick` (add `-InstallPythonDeps -InstallPester` on first run). Use `./scripts/precommit.ps1 -Mode full -Gpu` for parity with CI when GPUs are available.
+- Install a Git hook that enforces the quick gate automatically via `./scripts/hooks/install-precommit.ps1` (pass `-Mode full` or `-Gpu` to customize).
 - Tail combined service logs: `./scripts/compose.ps1 logs`.
 - Run automated smoke tests locally with `pip install -r requirements-dev.txt && pytest`. These checks parse `infra/compose/docker-compose.yml`, verify Modelfiles, and validate `.env.example` defaults. The same suite executes in CI via `.github/workflows/smoke-tests.yml`.
 - If PowerShell is unavailable, run `pytest tests/test_powershell_metadata.py` to mirror the lightweight Pester assertions against the helper scripts.
@@ -71,6 +73,7 @@ See `docs/ARCHITECTURE.md` for details.
 - `./scripts/context-sweep.ps1` now accepts `-Profile` or honours `CONTEXT_SWEEP_PROFILE` from `.env` to switch between long-context (`llama31-long`), balanced (`qwen3-balanced`), and CPU baselines.
 - Each profile pins `num_gpu=1` to avoid dual-GPU brownouts; safe mode further trims token targets for 32k runs.
 - See `docs/CONTEXT_PROFILES.md` for guidance on alternative Ollama models (llama3.2:3b-instruct, phi3.5:mini, mistral-nemo) and how to register custom profiles.
+
 
 
 

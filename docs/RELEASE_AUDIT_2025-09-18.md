@@ -1,4 +1,4 @@
-# Release Readiness Audit – 2025-09-18
+﻿# Release Readiness Audit â€“ 2025-09-18
 
 ## Executive Summary
 - The repository contains a mature infrastructure scaffold with Docker Compose definitions, PowerShell automation, and smoke testing; fresh GPU sweeps now provide runtime evidence, though integration into CI remains open.
@@ -44,31 +44,33 @@ graph TD
 ```
 
 ## Scripts & Operational Tooling Review
-- `scripts/compose.ps1` wraps Docker Compose actions with an opinionated `ValidateSet`, ensuring consistent lifecycle commands for operators.【F:scripts/compose.ps1†L1-L23】
-- `scripts/bootstrap.ps1` provisions `.env`, creates evidence directories, captures environment reports, and wires context sweep defaults so diagnostics stay reproducible.【F:scripts/bootstrap.ps1†L1-L120】
-- `scripts/context-sweep.ps1` and `scripts/eval-context.ps1` expose CPU/GPU profiles with safe-mode throttling, generating Markdown evidence when invoked via CLI or CI.【F:scripts/context-sweep.ps1†L1-L40】
-- `scripts/clean/bench_ollama.ps1` and `scripts/clean/capture_state.ps1` benchmark inference latency and snapshot system telemetry into `docs/evidence/benchmarks/` and `docs/evidence/state/` respectively.【F:scripts/clean/bench_ollama.ps1†L1-L40】
+- `scripts/compose.ps1` wraps Docker Compose actions with an opinionated `ValidateSet`, ensuring consistent lifecycle commands for operators.ã€F:scripts/compose.ps1â€ L1-L23ã€‘
+- `scripts/bootstrap.ps1` provisions `.env`, creates evidence directories, captures environment reports, and wires context sweep defaults so diagnostics stay reproducible.ã€F:scripts/bootstrap.ps1â€ L1-L120ã€‘
+- `scripts/context-sweep.ps1` and `scripts/eval-context.ps1` expose CPU/GPU profiles with safe-mode throttling, generating Markdown evidence when invoked via CLI or CI.ã€F:scripts/context-sweep.ps1â€ L1-L40ã€‘
+- `scripts/precommit.ps1` orchestrates the local smoke gate (pytest, Pester, optional compose bring-up) so contributors can mirror CI before pushing; `scripts/hooks/install-precommit.ps1` wires a Git hook to enforce the quick mode.
+- `scripts/clean/bench_ollama.ps1` and `scripts/clean/capture_state.ps1` benchmark inference latency and snapshot system telemetry into `docs/evidence/benchmarks/` and `docs/evidence/state/` respectively.ã€F:scripts/clean/bench_ollama.ps1â€ L1-L40ã€‘
 
 ## Documentation & Evidence Review
 ## Recent Validation (2025-09-18)
 - Manual safe GPU sweeps for `llama31-long` passed on both GPUs after prompt normalization; evidence stored at `docs/CONTEXT_RESULTS_2025-09-18_06-09-59.md`.
 - Telemetry snapshot captured via `scripts/clean/capture_state.ps1 -IncludeDocker` (`scripts/docs/evidence/state/state-20250918-055019/`).
 - `scripts/eval-context.ps1` now normalizes bracketed responses and `scripts/clean/bench_ollama.ps1` drops the unsupported `docker exec -T` flag, enabling container benchmarks on Windows hosts.
-- Core guidance lives in `README.md`, `docs/ARCHITECTURE.md`, `docs/PROJECT_REPORT_2025-09-16.md`, and the dated release notes, offering historical traceability for decisions and operations.【F:README.md†L1-L64】【F:docs/RELEASE_v2025-09-16.md†L1-L64】
-- `docs/STACK_STATUS_2025-09-16.md` and `docs/COVERAGE_REPORT_2025-09-17.md` highlight prior validation results and known automation gaps, forming the baseline for this audit.【F:docs/STACK_STATUS_2025-09-16.md†L1-L60】【F:docs/COVERAGE_REPORT_2025-09-17.md†L1-L48】
-- Evidence directories capture benchmark iterations and environment fingerprints, though GPU telemetry remains absent in the historical record.【F:docs/evidence/benchmarks/bench-test-20250917-185829/report.md†L1-L40】【F:docs/evidence/environment/environment-report-20250917-175532.md†L1-L40】
+- Core guidance lives in `README.md`, `docs/ARCHITECTURE.md`, `docs/PROJECT_REPORT_2025-09-16.md`, and the dated release notes, offering historical traceability for decisions and operations.ã€F:README.mdâ€ L1-L64ã€‘ã€F:docs/RELEASE_v2025-09-16.mdâ€ L1-L64ã€‘
+- `docs/STACK_STATUS_2025-09-16.md` and `docs/COVERAGE_REPORT_2025-09-17.md` highlight prior validation results and known automation gaps, forming the baseline for this audit.ã€F:docs/STACK_STATUS_2025-09-16.mdâ€ L1-L60ã€‘ã€F:docs/COVERAGE_REPORT_2025-09-17.mdâ€ L1-L48ã€‘
+- Evidence directories capture benchmark iterations and environment fingerprints, though GPU telemetry remains absent in the historical record.ã€F:docs/evidence/benchmarks/bench-test-20250917-185829/report.mdâ€ L1-L40ã€‘ã€F:docs/evidence/environment/environment-report-20250917-175532.mdâ€ L1-L40ã€‘
 
 ## Environment & Configuration
-- `.env.example` now includes `LOG_FILE=./logs/stack.log`, consolidating logging configuration in a single template and ensuring all paths remain repository-relative for portability.【F:.env.example†L1-L24】
-- Pytest smoke tests enforce the expanded key set and confirm relative paths across models, data, evidence, and logging locations.【F:tests/config/test_env_example.py†L1-L52】
-- `.gitignore` ignores `.env`, data/model directories, and now `logs/`, preventing accidental log artifacts from entering version control.【F:.gitignore†L1-L11】
+- `.env.example` now includes `LOG_FILE=./logs/stack.log`, consolidating logging configuration in a single template and ensuring all paths remain repository-relative for portability.ã€F:.env.exampleâ€ L1-L24ã€‘
+- Pytest smoke tests enforce the expanded key set and confirm relative paths across models, data, evidence, and logging locations.ã€F:tests/config/test_env_example.pyâ€ L1-L52ã€‘
+- `.gitignore` ignores `.env`, data/model directories, and now `logs/`, preventing accidental log artifacts from entering version control.ã€F:.gitignoreâ€ L1-L11ã€‘
 
 ## Gaps & Recommendations
-1. Implement GPU-enabled sweeps and runtime inference tests within CI to transition from structural verification to behavioural guarantees.【F:docs/COVERAGE_REPORT_2025-09-17.md†L38-L56】
-2. Add coverage instrumentation (pytest `--cov`, Pester CodeCoverage) and persist HTML/XML outputs under `docs/evidence/coverage/` for auditability.【F:roadmap/testing-expansion.md†L5-L13】
-3. Expand script-level testing beyond presence checks, covering menu flows (`bootstrap.ps1 -Menu`), failure handling, and benchmarking edge cases.【F:tests/pester/scripts.Tests.ps1†L1-L32】
-4. Establish a cadence to refresh environment fingerprints (`docs/ENVIRONMENT.md`) from a fully provisioned host after each significant release candidate.【F:docs/ENVIRONMENT.md†L1-L40】
+1. Implement GPU-enabled sweeps and runtime inference tests within CI to transition from structural verification to behavioural guarantees.ã€F:docs/COVERAGE_REPORT_2025-09-17.mdâ€ L38-L56ã€‘
+2. Add coverage instrumentation (pytest `--cov`, Pester CodeCoverage) and persist HTML/XML outputs under `docs/evidence/coverage/` for auditability.ã€F:roadmap/testing-expansion.mdâ€ L5-L13ã€‘
+3. Expand script-level testing beyond presence checks, covering menu flows (`bootstrap.ps1 -Menu`), failure handling, and benchmarking edge cases.ã€F:tests/pester/scripts.Tests.ps1â€ L1-L32ã€‘
+4. Establish a cadence to refresh environment fingerprints (`docs/ENVIRONMENT.md`) from a fully provisioned host after each significant release candidate.ã€F:docs/ENVIRONMENT.mdâ€ L1-L40ã€‘
 
 ## Release Decision
 - **Status:** Not yet release ready. Structural automation is in place and manual GPU validation now passes, but CI automation, runtime assertions, and coverage metrics must be implemented before promoting to production.
 - **Next Validation Window:** After GPU sweeps, runtime tests, and coverage artifacts land in CI evidence stores, re-run this audit to confirm release readiness.
+
