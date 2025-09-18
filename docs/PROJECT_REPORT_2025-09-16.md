@@ -55,7 +55,7 @@
 5. Regenerate `docs/ENVIRONMENT.md` after verifying dependencies on an operator host and continue reviewing pinned container image CVEs in future release reports.
 
 ## Reference Materials
-- Quickstart instructions and stack prerequisites live in `README.md` and `README-G1MvP.md`.
+- Quickstart instructions and stack prerequisites live in `README.md` (the former `README-G1MvP.md` now defers to that canonical guide).
 - Detailed release notes: `docs/RELEASE_v2025-09-16.md` (current stable baseline).
 - Automation scripts: see `scripts/` folder for compose, model, bootstrap, and evaluation helpers.
 - Latest environment fingerprint: `docs/ENVIRONMENT.md` (regenerate after host upgrades).

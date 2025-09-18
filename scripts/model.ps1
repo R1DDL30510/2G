@@ -7,7 +7,18 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$repoRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+$scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$commonCandidates = @(
+    Join-Path $scriptRoot 'common/repo-paths.ps1'
+    Join-Path (Split-Path -Parent $scriptRoot) 'common/repo-paths.ps1'
+)
+$repoHelperPath = $commonCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+if (-not $repoHelperPath) {
+    throw 'Unable to locate scripts/common/repo-paths.ps1'
+}
+. $repoHelperPath
+
+$repoRoot = Get-RepositoryRoot -StartingPath $scriptRoot
 
 function Join-RepoPath {
     param(
@@ -20,6 +31,60 @@ function Join-RepoPath {
     }
 
     return $current
+}
+
+function Get-AvailableGpuIndices {
+    try {
+        $raw = & nvidia-smi --query-gpu=index --format=csv,noheader 2>$null
+        $exit = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
+        if ($exit -ne 0 -or -not $raw) {
+            return @()
+        }
+    }
+    catch {
+        return @()
+    }
+
+    $indices = @()
+    foreach ($line in $raw) {
+        if (-not $line) { continue }
+        $trimmed = $line.Trim()
+        if ($trimmed -match '^(?<idx>[0-9]+)') {
+            $indices += [int]$Matches['idx']
+        }
+    }
+
+    return ($indices | Sort-Object -Unique)
+}
+
+function Get-DefaultGpuIndex {
+    $preferred = 1
+    $envValue = Get-RepoEnvValue -RepoRoot $repoRoot -Key 'DEFAULT_GPU_INDEX'
+    if ($envValue) {
+        $parsed = 0
+        if ([int]::TryParse($envValue, [ref]$parsed)) {
+            $preferred = $parsed
+        }
+    }
+
+    $available = Get-AvailableGpuIndices
+    if ($available.Count -gt 0 -and -not ($available -contains $preferred)) {
+        $fallback = $available | Sort-Object | Select-Object -First 1
+        Write-Warning ("Preferred GPU index {0} not detected; falling back to GPU {1}." -f $preferred, $fallback)
+        return [int]$fallback
+    }
+
+    return [int]$preferred
+}
+
+function Test-ModelfileRequiresGpu {
+    param([string]$ModelfileName)
+
+    if (-not $ModelfileName) { return $false }
+    $path = Join-RepoPath -Parts @('modelfiles', $ModelfileName)
+    if (-not (Test-Path $path)) { return $false }
+
+    return Select-String -Path $path -Pattern 'PARAMETER\s+num_gpu' -Quiet
 }
 
 $composeFile = Join-RepoPath -Parts @('infra', 'compose', 'docker-compose.yml')
@@ -96,11 +161,19 @@ switch ($Action) {
             throw 'Specify -Model name to create (e.g., llama31-8b-gpu)'
         }
         $id = Get-OllamaId
-        $gpuIndex = if ($PSBoundParameters.ContainsKey('MainGpu')) { $MainGpu } else { -1 }
-        Invoke-OllamaCreate -ContainerId $id -ModelName $Model -ModelfileName "$Model.Modelfile" -MainGpuIndex $gpuIndex
+        $modelfileName = "$Model.Modelfile"
+        $gpuIndex = -1
+        if ($PSBoundParameters.ContainsKey('MainGpu')) {
+            $gpuIndex = $MainGpu
+        }
+        elseif (Test-ModelfileRequiresGpu -ModelfileName $modelfileName) {
+            $gpuIndex = Get-DefaultGpuIndex
+        }
+        Invoke-OllamaCreate -ContainerId $id -ModelName $Model -ModelfileName $modelfileName -MainGpuIndex $gpuIndex
     }
     'create-all' {
         $id = Get-OllamaId
+        $defaultGpuIndex = Get-DefaultGpuIndex
         $targets = @(
             @{ Name = 'llama31-8b-c4k'; OverrideGpu = $false },
             @{ Name = 'llama31-8b-c8k'; OverrideGpu = $false },
@@ -110,7 +183,15 @@ switch ($Action) {
         )
         $failedCreates = @()
         foreach ($target in $targets) {
-            $gpuIndex = if ($target.OverrideGpu -and $PSBoundParameters.ContainsKey('MainGpu')) { $MainGpu } else { -1 }
+            $gpuIndex = -1
+            if ($target.OverrideGpu) {
+                if ($PSBoundParameters.ContainsKey('MainGpu')) {
+                    $gpuIndex = $MainGpu
+                }
+                else {
+                    $gpuIndex = $defaultGpuIndex
+                }
+            }
             try {
                 Invoke-OllamaCreate -ContainerId $id -ModelName $target.Name -ModelfileName "${($target.Name)}.Modelfile" -MainGpuIndex $gpuIndex
             }

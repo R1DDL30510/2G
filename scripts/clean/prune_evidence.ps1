@@ -1,91 +1,90 @@
 param(
-    [ValidateRange(0, [int]::MaxValue)]
-    [int]$Keep = 5,
-    [ValidateRange(0, [int]::MaxValue)]
-    [int]$MaxAgeDays = 0,
-    [string]$Root
+    [int]$RetentionDays = 14,
+    [int]$KeepRecent = 5,
+    [string]$EvidenceRoot
 )
 
 $ErrorActionPreference = 'Stop'
-$scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$repoRoot = Split-Path -Parent $scriptRoot
 
-function Get-EnvValue {
+$scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$commonCandidates = @(
+    Join-Path $scriptRoot 'common/repo-paths.ps1'
+    Join-Path (Split-Path -Parent $scriptRoot) 'common/repo-paths.ps1'
+)
+$repoHelperPath = $commonCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+if (-not $repoHelperPath) {
+    throw 'Unable to locate scripts/common/repo-paths.ps1'
+}
+. $repoHelperPath
+
+$repoRoot = Get-RepositoryRoot -StartingPath $scriptRoot
+
+if (-not $EvidenceRoot) {
+    $resolvedEvidence = Get-RepoEvidenceRoot -RepoRoot $repoRoot
+}
+else {
+    $resolvedEvidence = Resolve-RepoPath -RepoRoot $repoRoot -Path $EvidenceRoot
+}
+if (-not (Test-Path $resolvedEvidence)) {
+    Write-Warning ("Evidence root '$resolvedEvidence' not found; nothing to prune.")
+    return
+}
+
+if ($RetentionDays -le 0) {
+    $cutoff = [DateTime]::MinValue
+}
+else {
+    $cutoff = (Get-Date).AddDays(-[double]$RetentionDays)
+}
+
+$summary = @()
+
+function Prune-Entries {
     param(
-        [Parameter(Mandatory = $true)]
-        [string]$Key
+        [Parameter(Mandatory = $true)][string]$TargetPath
     )
 
-    $envFile = Join-Path -Path $repoRoot -ChildPath '.env'
-    if (-not (Test-Path -Path $envFile)) {
-        return $null
-    }
+    if (-not (Test-Path $TargetPath)) { return }
+    $items = Get-ChildItem -Path $TargetPath -Force |
+        Where-Object { $_.Name -ne '.gitkeep' } |
+        Sort-Object LastWriteTime -Descending
+    for ($i = 0; $i -lt $items.Count; $i++) {
+        $item = $items[$i]
+        $shouldDelete = $false
+        if ($KeepRecent -gt 0 -and $i -ge $KeepRecent) {
+            $shouldDelete = $true
+        }
+        if (-not $shouldDelete -and $RetentionDays -gt 0 -and $item.LastWriteTime -lt $cutoff) {
+            $shouldDelete = $true
+        }
 
-    foreach ($line in Get-Content -Path $envFile) {
-        if ($line -match "^\s*$([regex]::Escape($Key))=(.+)$") {
-            return $Matches[1]
+        if ($shouldDelete) {
+            try {
+                Remove-Item -Path $item.FullName -Recurse -Force -ErrorAction Stop
+                $summary += [pscustomobject]@{
+                    Path = $item.FullName
+                    LastWriteTime = $item.LastWriteTime
+                    Type = if ($item.PSIsContainer) { 'Directory' } else { 'File' }
+                }
+            }
+            catch {
+                Write-Warning ("Failed to prune $($item.FullName): $($_.Exception.Message)")
+            }
         }
     }
-
-    return $null
 }
 
-if (-not $Root) {
-    $envRoot = Get-EnvValue -Key 'EVIDENCE_ROOT'
-    if ($envRoot) {
-        $Root = if ([System.IO.Path]::IsPathRooted($envRoot)) {
-            $envRoot
-        }
-        else {
-            Join-Path -Path $repoRoot -ChildPath $envRoot
-        }
-    }
-    else {
-        $Root = Join-Path -Path $repoRoot -ChildPath 'docs/evidence'
+Prune-Entries -TargetPath $resolvedEvidence
+Get-ChildItem -Path $resolvedEvidence -Directory -ErrorAction SilentlyContinue | ForEach-Object {
+    Prune-Entries -TargetPath $_.FullName
+}
+
+if ($summary.Count -eq 0) {
+    Write-Output 'No evidence artifacts required pruning.'
+}
+else {
+    Write-Output 'Pruned evidence artifacts:'
+    foreach ($entry in $summary) {
+        Write-Output (" - {0} (last write: {1:yyyy-MM-dd HH:mm:ss}, {2})" -f $entry.Path, $entry.LastWriteTime, $entry.Type)
     }
 }
-
-$stateRoot = Join-Path -Path $Root -ChildPath 'state'
-if (-not (Test-Path -Path $stateRoot)) {
-    Write-Host "State evidence directory not found at $stateRoot. Nothing to prune."
-    return
-}
-
-$directories = Get-ChildItem -Path $stateRoot -Directory | Sort-Object -Property LastWriteTime -Descending
-if (-not $directories) {
-    Write-Host "No state evidence directories discovered under $stateRoot."
-    return
-}
-
-$threshold = if ($MaxAgeDays -gt 0) { (Get-Date).AddDays(-$MaxAgeDays) } else { $null }
-$removals = @()
-
-for ($index = 0; $index -lt $directories.Count; $index++) {
-    $dir = $directories[$index]
-    $withinRetention = $index -lt $Keep
-
-    if ($withinRetention) {
-        continue
-    }
-
-    if (-not $threshold) {
-        $removals += $dir
-        continue
-    }
-
-    if ($dir.LastWriteTime -lt $threshold) {
-        $removals += $dir
-    }
-}
-
-if ($removals.Count -eq 0) {
-    Write-Host "No evidence directories required pruning."
-    return
-}
-
-foreach ($directory in $removals) {
-    Write-Host "Removing $($directory.FullName)"
-    Remove-Item -Path $directory.FullName -Recurse -Force -ErrorAction Stop
-}
-
-Write-Host ("Pruned {0} state evidence director{1}." -f $removals.Count, $(if ($removals.Count -eq 1) { 'y' } else { 'ies' }))
