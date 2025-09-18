@@ -59,8 +59,10 @@ Describe 'scripts/bootstrap.ps1' {
 
 Describe 'context evaluation tooling' {
     BeforeAll {
-        $script:sweepContent = Get-RequiredFileContent -RelativePath 'scripts/context-sweep.ps1'
-        $script:evalContent = Get-RequiredFileContent -RelativePath 'scripts/eval-context.ps1'
+        $script:sweepPath = Join-Path -Path $repoRoot -ChildPath 'scripts/context-sweep.ps1'
+        $script:sweepContent = Get-Content -Path $script:sweepPath -Raw
+        $script:evalPath = Join-Path -Path $repoRoot -ChildPath 'scripts/eval-context.ps1'
+        $script:evalContent = Get-Content -Path $script:evalPath -Raw
     }
 
     It 'context sweep exposes built-in profiles' {
@@ -72,5 +74,20 @@ Describe 'context evaluation tooling' {
 
     It 'eval-context exposes CpuOnly switch' {
         ($script:evalContent -match '\[switch\]\$CpuOnly') | Should -BeTrue
+    }
+}
+
+Describe 'scripts/clean/prune_evidence.ps1' {
+    BeforeAll {
+        $script:prunePath = Join-Path -Path $repoRoot -ChildPath 'scripts/clean/prune_evidence.ps1'
+        $script:pruneContent = Get-Content -Path $script:prunePath -Raw
+    }
+
+    It 'defines Keep parameter with default of 5' {
+        ($script:pruneContent -match "\[int\]\$Keep = 5") | Should -BeTrue
+    }
+
+    It 'reads EVIDENCE_ROOT from .env when Root not provided' {
+        ($script:pruneContent -match "Get-EnvValue -Key 'EVIDENCE_ROOT'") | Should -BeTrue
     }
 }

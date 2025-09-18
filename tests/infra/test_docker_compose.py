@@ -121,12 +121,12 @@ def test_gpu_overlay_requests_cuda_resources() -> None:
     ollama = GPU_SERVICES_CACHE["ollama"]
 
     assert (
-        ollama.get("gpus") == "${OLLAMA_GPU_ALLOCATION:-all}"
-    ), "GPU overlay must request GPU resources"
+        ollama.get("gpus") == "${OLLAMA_GPU_ALLOCATION:-device=1}"
+    ), "GPU overlay must request GPU resources on GPU 1 by default"
 
     environment: List[str] = ollama.get("environment", [])  # type: ignore[assignment]
     expected_pairs = {
-        "NVIDIA_VISIBLE_DEVICES=${OLLAMA_VISIBLE_GPUS:-all}",
+        "NVIDIA_VISIBLE_DEVICES=${OLLAMA_VISIBLE_GPUS:-1}",
         "NVIDIA_DRIVER_CAPABILITIES=compute,utility",
         "OLLAMA_USE_CPU=${OLLAMA_USE_CPU:-false}",
     }

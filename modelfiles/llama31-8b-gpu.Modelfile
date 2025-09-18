@@ -3,8 +3,8 @@ FROM llama3.1:8b
 # Offload as many layers as possible to GPU
 PARAMETER num_gpu 999
 
-# Default to GPU index 0; override via scripts/model.ps1 -MainGpu
-PARAMETER main_gpu 0
+# Default to GPU index 1; override via scripts/model.ps1 -MainGpu
+PARAMETER main_gpu 1
 
 # Optional: context window
 PARAMETER num_ctx 4096
