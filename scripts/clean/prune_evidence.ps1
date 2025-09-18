@@ -62,18 +62,18 @@ $removals = @()
 
 for ($index = 0; $index -lt $directories.Count; $index++) {
     $dir = $directories[$index]
-    $remove = $false
     $withinRetention = $index -lt $Keep
 
-    if ($index -ge $Keep) {
-        $remove = $true
+    if ($withinRetention) {
+        continue
     }
 
-    if (-not $withinRetention -and $threshold -and $dir.LastWriteTime -lt $threshold) {
-        $remove = $true
+    if (-not $threshold) {
+        $removals += $dir
+        continue
     }
 
-    if ($remove) {
+    if ($dir.LastWriteTime -lt $threshold) {
         $removals += $dir
     }
 }
