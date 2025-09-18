@@ -1,2 +1,2 @@
 # Core Python tooling shared by local development and CI
-pytest>=8.2,<9
+pytest>=8.2

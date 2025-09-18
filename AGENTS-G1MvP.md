@@ -1,79 +1,56 @@
 Repository Guidelines
 =====================
 
-This document summarizes the conventions and workflows that the project follows.  Use it as a quick reference before you start coding or submitting a pull request.
+This quick reference captures the current conventions. Review it before making substantial changes or opening a pull request.
 
 ## Project Structure & Module Organization
 
 ```
-├─ infra/compose/        # Docker‑Compose orchestration
-│  └─ docker-compose.yml
-├─ scripts/              # PowerShell helpers (up, down, model pull, etc.)
+├─ infra/compose/        # Docker Compose orchestration
+│  └─ docker-compose.yml # Minimal Ollama runtime
+├─ scripts/              # PowerShell helpers (compose, bootstrap, models, diagnostics)
 ├─ modelfiles/           # Custom Ollama Modelfiles
-├─ data/                 # Persistent data (ignored by git)
-├─ models/               # Model caches (ignored by git)
-├─ src/                  # Application source (mirrors tests/ layout)
-├─ tests/                # Unit tests, one folder per source module
-└─ docs/                 # Documentation, reports, context sweeps
+├─ models/               # Persistent model cache (ignored by git)
+├─ src/                  # Application code (mirror layout in tests/)
+├─ tests/                # Python + Pester guardrails
+└─ docs/                 # Focused documentation (see STATE_VERIFICATION.md)
 ```
 
-Maintain the `src/` and `tests/` tree in sync – for every new module in `src/`, create a corresponding test folder in `tests/`.
+Keep the implementation and test trees aligned. New modules in `src/` should have peers under `tests/`.
 
 ## Build, Test, and Development Commands
 
-- `./scripts/compose.ps1 up` – spin up the full stack with the pinned `docker‑compose.yml`.
-- `./scripts/compose.ps1 down` – tear down the stack.
-- `./scripts/compose.ps1 logs` – view combined logs.
-- `./scripts/model.ps1 pull –Model llama3.1:8b` – fetch and register a Modelfile model.
-- `./scripts/context-sweep.ps1 –CpuOnly –Safe –WriteReport` – run a guarded end‑to‑end validation.
-- `./scripts/context-sweep.ps1 –Gpu –WriteReport` – full GPU sweep (needs GPU availability).
+- `./scripts/bootstrap.ps1 -PromptSecrets` – ensure `.env` exists and confirm host prerequisites.
+- `./scripts/compose.ps1 up|down|restart|logs` – manage the lightweight Ollama stack.
+- `./scripts/model.ps1 create-all` – create the curated Modelfiles inside the running container.
+- `docker compose -f infra/compose/docker-compose.yml up -d` – shell-agnostic launch of the minimal stack.
+- `pip install -r requirements/python/dev.txt && pytest` – run the cross-platform smoke tests used in CI.
 
-All commands are PowerShell scripts; avoid invoking `docker compose` directly unless automating.
+All helper scripts are PowerShell; prefer them over raw Docker commands unless automating a bespoke flow.
 
 ## Coding Style & Naming Conventions
 
-*EditorConfig* sets 2‑space indentation for JS/TS, JSON, YAML, Markdown; 4‑space for Python, C#, PowerShell.
-*File names*:
-  - JS/TS: kebab‑case (e.g., `model-fetch.ts`).
-  - Python: snake_case.
-  - PowerShell: PascalCase.
-*Cmdlet names*: `Get-Model`, `Invoke-ContextSweep`.
-Run the linter/formatter for each language before committing (`npm run format`, `python -m black`, `pwsh .\scripts\format.ps1`).
+* `.editorconfig` enforces 2 spaces for JS/TS, JSON, YAML, Markdown; 4 spaces for Python and PowerShell.
+* Filenames: JS/TS use kebab-case, Python uses snake_case, PowerShell cmdlets use PascalCase.
+* Run language-appropriate formatters and linters before committing.
 
 ## Testing Guidelines
 
-Python tests use `pytest`; JS/TS tests use `jest`.  Tests mirror the source module layout and do **not** hit external services – mock or stub as required.
-Run the full suite locally with:
-```sh
-python -m pytest tests/
-jl run jest tests/
-```
-Coverage reports are output to `docs/` automatically by the context sweep.
+* Python guardrails rely on `pytest` and run offline.
+* PowerShell parity checks live under `tests/pester` and mirror the Python assertions for contributors without Python.
+* Optional end-to-end diagnostics: `./scripts/context-sweep.ps1 -Safe -CpuOnly -WriteReport` once the minimal stack is online.
 
 ## Commit & Pull Request Guidelines
 
-Follow Conventional Commits:
-```
-feat: add new endpoint
-fix: correct typo in README
-docs: update usage example
-chore: bump dependency
-```
-Pull requests must:
-1. Describe the intent clearly.
-2. Link any related issue (`Closes #45`).
-3. Include logs or screenshots if a script or stack behaviour changes.
-4. Pass `./scripts/compose.ps1 up` and at least one guarded context sweep before merge.
+* Follow Conventional Commit prefixes (`feat:`, `fix:`, `docs:`, `chore:`).
+* Clearly describe intent, reference related issues, and include logs or screenshots when behaviour changes.
+* Ensure `./scripts/compose.ps1 up` and the Python test suite succeed before requesting review.
 
 ## Security & Configuration Tips
 
-* Do **not** commit secrets.  Keep a local `.env` that matches `.env.example`.
-* Large artefacts go in `data/` or `models/`; these folders are git‑ignored.
-* Export container backups with the `qdrant‑backup.ps1` helper before pruning.
-* Validate new Docker images on a dedicated branch before merging.
-```ps1
-./scripts/compose.ps1 pull -Image qdrant/qdrant:v1.16.0  # Example of a safe update
-```
+* Do **not** commit secrets. Align `.env` with `.env.example` via `./scripts/bootstrap.ps1 -PromptSecrets`.
+* Container images are configurable via environment variables; tags are intentionally left flexible for modular deployments.
+* Persist large artefacts under `models/` and back them up before pruning.
 
-Use these guidelines to keep the project clean, testable, and secure.
+Use these guidelines to keep the project focused, reproducible, and easy to extend.
 

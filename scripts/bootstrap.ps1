@@ -69,7 +69,7 @@ function Get-EnvValue {
 function Get-EvidenceRoot {
     $configured = Get-EnvValue -Key 'EVIDENCE_ROOT'
     $envLocalPath = Join-Path $repoRoot '.env'
-    $null = Ensure-EnvEntry -Path $envLocalPath -Key 'CONTEXT_SWEEP_PROFILE' -DefaultValue 'llama31-long' -Comment 'Default context sweep profile (llama31-long, qwen3-balanced, cpu-baseline).' -PromptValue:$PromptSecrets
+    $null = Ensure-EnvEntry -Path $envLocalPath -Key 'CONTEXT_SWEEP_PROFILE' -DefaultValue 'baseline-cpu' -Comment 'Default context sweep profile (baseline-cpu).' -PromptValue:$PromptSecrets
     if ($configured) {
         if ([System.IO.Path]::IsPathRooted($configured)) {
             return $configured
@@ -371,16 +371,21 @@ function Invoke-WorkspaceProvisioning {
         Write-Output 'Created .env from .env.example'
     }
 
+    $null = Ensure-EnvEntry -Path $envLocal -Key 'OLLAMA_IMAGE' -DefaultValue 'ollama/ollama' -Comment 'Base image used by the baseline stack. Override to experiment with alternative tags.' -PromptValue:$PromptSecrets
+    $null = Ensure-EnvEntry -Path $envLocal -Key 'OLLAMA_PORT' -DefaultValue '11434' -Comment 'Host port forwarded to the Ollama API container.' -PromptValue:$PromptSecrets
+    $null = Ensure-EnvEntry -Path $envLocal -Key 'MODELS_DIR' -DefaultValue './models' -Comment 'Relative directory used to persist downloaded Ollama models.' -PromptValue:$PromptSecrets
     $null = Ensure-EnvEntry -Path $envLocal -Key 'OLLAMA_API_KEY' -DefaultValue 'ollama-local' -Comment 'Dummy key required by Codex CLI workflows when proxying to local Ollama. Replace with a real token if bridging to remote services.' -PromptValue:$PromptSecrets
     $null = Ensure-EnvEntry -Path $envLocal -Key 'OLLAMA_BASE_URL' -DefaultValue 'http://localhost:11434' -Comment 'Base URL for local Ollama API. Used by health checks and benchmarking.' -PromptValue:$PromptSecrets
-    $null = Ensure-EnvEntry -Path $envLocal -Key 'OLLAMA_BENCH_MODEL' -DefaultValue 'llama3.1:8b' -Comment 'Default model targeted by scripts/clean/bench_ollama.ps1.' -PromptValue:$PromptSecrets
+    $null = Ensure-EnvEntry -Path $envLocal -Key 'OLLAMA_BENCH_MODEL' -DefaultValue 'llama3.1' -Comment 'Default model targeted by scripts/clean/bench_ollama.ps1.' -PromptValue:$PromptSecrets
     $null = Ensure-EnvEntry -Path $envLocal -Key 'OLLAMA_BENCH_PROMPT' -DefaultValue './docs/prompts/bench-default.txt' -Comment 'Prompt file consumed by bench_ollama.ps1 during latency sampling.' -PromptValue:$PromptSecrets
     $null = Ensure-EnvEntry -Path $envLocal -Key 'EVIDENCE_ROOT' -DefaultValue './docs/evidence' -Comment 'Destination directory for diagnostics artifacts.' -PromptValue:$PromptSecrets
-    $null = Ensure-EnvEntry -Path $envLocal -Key 'CONTEXT_SWEEP_PROFILE' -DefaultValue 'llama31-long' -Comment 'Default context sweep profile (llama31-long, qwen3-balanced, cpu-baseline).' -PromptValue:$PromptSecrets
+    $null = Ensure-EnvEntry -Path $envLocal -Key 'CONTEXT_SWEEP_PROFILE' -DefaultValue 'baseline-cpu' -Comment 'Default context sweep profile (baseline-cpu).' -PromptValue:$PromptSecrets
+    $null = Ensure-EnvEntry -Path $envLocal -Key 'LOG_FILE' -DefaultValue './logs/stack.log' -Comment 'Relative path for stack diagnostics emitted by helper scripts.' -PromptValue:$PromptSecrets
 
     foreach ($directory in @('data', 'models')) {
         Ensure-Directory -Path (Join-Path $repoRoot $directory)
     }
+    Ensure-Directory -Path (Join-Path $repoRoot 'logs')
     Ensure-Directory -Path (Get-EvidenceRoot)
     Ensure-Directory -Path (Join-Path $docsRoot 'prompts')
 

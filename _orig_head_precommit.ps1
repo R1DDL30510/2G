@@ -156,7 +156,7 @@ if ($settings.Compose) {
         if ($settings.Sweep) {
             $sweepArgs = @('-Safe', '-WriteReport')
             if ($settings.CpuOnly) { $sweepArgs += '-CpuOnly' }
-            if ($Gpu) { $sweepArgs += '-Profile'; $sweepArgs += 'llama31-long' }
+            if ($Gpu) { $sweepArgs += '-Profile'; $sweepArgs += 'baseline-cpu' }
             Invoke-Step "Context sweep" {
                 & (Join-Path $repoRoot 'scripts/context-sweep.ps1') @sweepArgs
                 if ($LASTEXITCODE -ne 0) { throw "Context sweep failed" }

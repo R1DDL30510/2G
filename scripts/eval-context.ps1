@@ -1,5 +1,5 @@
-﻿param(
-    [string]$Model = 'llama31-8b-c8k',
+param(
+    [string]$Model = 'baseline',
     [int]$TokensTarget = 6000,
     [int]$Markers = 6,
     [int]$TimeoutSec = 300,

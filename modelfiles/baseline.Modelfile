@@ -1,0 +1,9 @@
+# Minimal baseline model configuration
+FROM llama3.1
+
+# Keep prompts untouched so downstream tools can inject their own format.
+TEMPLATE """{{ .Prompt }}"""
+
+# Conservative defaults favour CPU-only usage while remaining customisable.
+PARAMETER num_ctx 8192
+PARAMETER num_thread 4

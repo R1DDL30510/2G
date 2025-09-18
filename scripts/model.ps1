@@ -93,7 +93,7 @@ switch ($Action) {
     }
     'create' {
         if (-not $Model) {
-            throw 'Specify -Model name to create (e.g., llama31-8b-gpu)'
+            throw 'Specify -Model name to create (e.g., baseline)'
         }
         $id = Get-OllamaId
         $gpuIndex = if ($PSBoundParameters.ContainsKey('MainGpu')) { $MainGpu } else { -1 }
@@ -102,11 +102,7 @@ switch ($Action) {
     'create-all' {
         $id = Get-OllamaId
         $targets = @(
-            @{ Name = 'llama31-8b-c4k'; OverrideGpu = $false },
-            @{ Name = 'llama31-8b-c8k'; OverrideGpu = $false },
-            @{ Name = 'llama31-8b-c16k'; OverrideGpu = $false },
-            @{ Name = 'llama31-8b-c32k'; OverrideGpu = $false },
-            @{ Name = 'llama31-8b-gpu'; OverrideGpu = $true }
+            @{ Name = 'baseline'; OverrideGpu = $false }
         )
         $failedCreates = @()
         foreach ($target in $targets) {

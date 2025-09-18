@@ -28,7 +28,7 @@ jobs:
 
       - name: Ensure evidence and volume directories exist
         run: |
-          mkdir -p data/open-webui data/qdrant models docs/evidence
+          mkdir -p models docs/evidence
 
       - name: Run Python smoke tests
         run: pytest --maxfail=1 --disable-warnings -q
@@ -46,13 +46,11 @@ jobs:
         run: |
           echo "Waiting for services to initialise"
           python scripts/wait_for_http.py --retries 36 --delay 5 --timeout 5 \
-            http://localhost:11434/api/version \
-            http://localhost:6333/collections \
-            http://localhost:3000
+            http://localhost:11434/api/version
 
       - name: Run context sweep (safe CPU profile)
         shell: pwsh
-        run: ./scripts/context-sweep.ps1 -Safe -CpuOnly -Profile cpu-baseline -PlanOnly -WriteReport
+        run: ./scripts/context-sweep.ps1 -Safe -CpuOnly -Profile baseline-cpu -PlanOnly -WriteReport
       - name: Capture host state snapshot
         shell: pwsh
         run: ./scripts/clean/capture_state.ps1 -OutputRoot docs/evidence/ci

@@ -184,7 +184,7 @@ if ($settings.Compose) {
         if ($settings.Sweep) {
             $sweepParams = @{ Safe = $true; WriteReport = $true }
             if ($settings.CpuOnly) { $sweepParams['CpuOnly'] = $true }
-            if ($Gpu) { $sweepParams['Profile'] = 'llama31-long' }
+            if ($Gpu) { $sweepParams['Profile'] = 'baseline-cpu' }
             Invoke-Step "Context sweep" {
                 & (Join-Path $repoRoot 'scripts/context-sweep.ps1') @sweepParams
                 if ($LASTEXITCODE -ne 0) { throw "Context sweep failed" }

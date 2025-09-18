@@ -1,17 +1,38 @@
 # State Verification Checklist
 
-This document tracks the current stability of the stack and the checks that keep it reproducible.
+This checklist highlights the current stability of the minimal stack and the checks that keep it reproducible.
 
 ## Stable Today
-- **Infrastructure compose files** – `infra/compose/docker-compose.yml` (CPU baseline) and `infra/compose/docker-compose.ci.yml` (CI overrides) run with the repository `.env` and resolve storage paths automatically.
-- **Helper tooling** – `scripts/compose.ps1` now forwards `--env-file` and accepts optional overlays via `-File`, enforcing non-zero exit codes from Docker.
-- **Core services** – Ollama, Open WebUI, and Qdrant start cleanly on Docker Desktop / Engine without GPU access.
-- **Python guardrails** – `pytest` validates compose manifests, `.env.example`, and Modelfiles without network access.
+- **Compose manifest** – `infra/compose/docker-compose.yml` starts a single Ollama container and honours `OLLAMA_IMAGE`, `OLLAMA_PORT`, and `MODELS_DIR` overrides from `.env`.
+- **Helper scripts** – `scripts/bootstrap.ps1`, `scripts/compose.ps1`, and `scripts/model.ps1 create-all` operate cross-platform and surface non-zero exit codes when Docker or PowerShell fail.
+- **Baseline Modelfile** – `modelfiles/baseline.Modelfile` wraps `llama3.1` with conservative CPU defaults and passes the template through unchanged.
+- **Python guardrails** – `pytest` validates the compose manifest, `.env.example`, and Modelfiles without contacting external services.
 
 ## Experimental or Host-Dependent
-- **GPU overlay** – `infra/compose/docker-compose.gpu.yml` is optional and depends on NVIDIA container support. Treat failures as host-specific until validated on real hardware.
-- **Context sweeps** – `./scripts/context-sweep.ps1` supports plan-only runs in CI. Full sweeps still require local model downloads and sufficient VRAM.
-- **PowerShell-only tooling** – the richer diagnostics (capture-state, benchmarking) need PowerShell 7 and may not run on minimal shells.
+- **GPU overlay** – `infra/compose/docker-compose.gpu.yml` depends on NVIDIA container support. Treat failures as host-specific until validated on real hardware.
+- **Context sweeps** – `./scripts/context-sweep.ps1` supports plan-only runs in CI. Full executions still require local model downloads and sufficient CPU/GPU capacity.
+- **Additional services** – any service layered on top of the minimal stack must ship its own verification steps.
+
+## Compose overlays in practice
+The baseline remains a single Ollama service. When you need to expand, add a focused overlay file under `infra/compose/` so the extra workload stays optional. For example, to introduce a vector store without bloating the default manifest:
+
+```yaml
+# infra/compose/docker-compose.qdrant.yml
+services:
+  qdrant:
+    image: qdrant/qdrant
+    restart: unless-stopped
+    ports:
+      - "6333:6333"
+```
+
+Start it alongside the baseline only when required:
+
+```powershell
+./scripts/compose.ps1 up -File docker-compose.qdrant.yml
+```
+
+Ship complementary guardrails (pytest or Pester checks) with any new overlay so CI can detect drift early.
 
 ## Verification Steps
 Run these checks after changing infrastructure, scripts, or documentation referenced by the stack:
@@ -24,8 +45,8 @@ pytest
 # Optional PowerShell mirror
 pwsh -File tests/pester/scripts.Tests.ps1
 
-# Optional context sweep (plan only keeps CI lightweight)
+# Optional context sweep (plan-only keeps CI lightweight)
 ./scripts/context-sweep.ps1 -Safe -CpuOnly -PlanOnly -WriteReport
 ```
 
-Record the outcomes in `docs/evidence/` when promoting a change to ensure reviewers can audit the run.
+Record outcomes in `docs/evidence/` when promoting a change so reviewers can audit the run.
