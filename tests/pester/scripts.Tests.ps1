@@ -1,12 +1,14 @@
-if (-not $PSScriptRoot) {
-    $PSScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Definition
+$scriptRoot = $PSScriptRoot
+
+if (-not $scriptRoot) {
+    $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Definition
 }
 
-if (-not $PSScriptRoot) {
+if (-not $scriptRoot) {
     throw "PSScriptRoot was not populated; unable to determine repository root."
 }
 
-$repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$repoRoot = Split-Path -Parent (Split-Path -Parent $scriptRoot)
 
 Describe 'scripts/compose.ps1' {
     BeforeAll {
