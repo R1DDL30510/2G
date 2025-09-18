@@ -40,6 +40,11 @@ Describe 'scripts/compose.ps1' {
     It 'declares expected actions' {
         ($script:composeContent -match "ValidateSet\('up','down','restart','logs'\)") | Should -BeTrue
     }
+
+    It 'bubbles repository env file and overlays to docker compose' {
+        ($script:composeContent -match '--env-file') | Should -BeTrue
+        ($script:composeContent -match '\[string\[\]\]\$File') | Should -BeTrue
+    }
 }
 
 Describe 'scripts/bootstrap.ps1' {

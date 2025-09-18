@@ -1,100 +1,52 @@
-﻿# Local AI Infrastructure (Cloud-Independent, OSS)
+# Local AI Stack (Modular Core)
 
-This repository scaffolds a local, open-source AI stack using Docker Compose. It runs fully on your machine with no cloud dependency.
+This repository maintains a lean Docker Compose stack for experimenting with a single Ollama runtime plus the optional Open WebUI frontend and Qdrant vector store. The PowerShell helpers keep the footprint small while still allowing you to layer extra services as required.
 
 ## Prerequisites
-- Windows 11 (WSL2 optional), admin rights
-- Docker Desktop (with "Use the WSL 2 based engine" enabled)
-- Git
-
-Optional: Python 3.10+, Node.js LTS, PowerShell 7 for scripts.
+- Windows 11, macOS, or Linux with Docker Engine/Desktop
+- PowerShell 7 (`pwsh`) for the helper scripts
+- Python 3.11 for the validation suite
+- Optional: Node.js LTS if you work with the Codex CLI utilities
 
 ## Quickstart
-1. Initialize the workspace: `./scripts/bootstrap.ps1 -PromptSecrets` (creates `.env`, `data/`, and `models/`, and lets you confirm CLI keys interactively). Running `./scripts/bootstrap.ps1` without switches now opens an interactive menu so you can trigger health checks and benchmarks from one place.
-2. Adjust `.env` if you need different ports or storage paths. Benchmark defaults (model, prompt, evidence directory) are stored in `.env` under the *Diagnostics and benchmarking* section. The template also seeds `LOG_FILE=./logs/stack.log` so compose and script logs consolidate under `./logs/`.
-3. Start the stack: `./scripts/compose.ps1 up` (PowerShell).
-4. Open WebUI: http://localhost:3000 (connects to local Ollama at http://localhost:11434).
+1. **Bootstrap the workspace** – `./scripts/bootstrap.ps1 -PromptSecrets` seeds `.env`, creates data/model folders, and runs the basic host checks.
+2. **Review `.env`** – adjust the exposed ports or storage locations. The compose helper now resolves these paths before calling Docker so relative values such as `./data` resolve to the repository root automatically.
+3. **Start the stack** – `./scripts/compose.ps1 up` brings up Ollama, Open WebUI, and Qdrant using the repository `.env`. Add overlays with `-File` when required:
+   ```powershell
+   ./scripts/compose.ps1 up -File docker-compose.gpu.yml
+   ```
+   Use `down`, `restart`, or `logs` for the other lifecycle operations.
+4. **Open the interfaces** – Ollama listens on `http://localhost:11434`, Open WebUI on `http://localhost:3000`, and Qdrant on `http://localhost:6333` by default.
 
+## Configuration
+- `.env` controls ports, storage paths, authentication flags, and diagnostics defaults. If the file is missing the compose script falls back to `.env.example` but exits early when neither exists so CI can detect misconfigurations immediately.
+- `infra/compose/docker-compose.yml` defines the minimal three-service stack. Paths rely on `${MODELS_DIR}` and `${DATA_DIR}` so overrides stay declarative.
+- `infra/compose/docker-compose.gpu.yml` adds GPU scheduling hints for the single Ollama container; layer it only on hosts with CUDA-capable hardware.
+- `modelfiles/` contains the curated Ollama variants. The automation only assumes the base llama3.1:8b lineage, so you can remove or add profiles without touching the compose layout.
 
-GPU hosts should layer the GPU overlay when starting the stack directly with Docker Compose: `docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.gpu.yml up -d`. The base file now defaults Ollama to CPU mode so CI and non-NVIDIA machines can boot the stack without errors; the overlay re-enables CUDA by requesting GPU resources and restoring the NVIDIA environment variables.
+## Services
+| Service    | Image                                   | Notes |
+|------------|-----------------------------------------|-------|
+| `ollama`   | `ollama/ollama:0.3.11`                  | CPU by default; enable GPU with the overlay. |
+| `open-webui` | `ghcr.io/open-webui/open-webui:v0.6.30` | Depends on `ollama`; stores state under `${DATA_DIR}/open-webui`. |
+| `qdrant`   | `qdrant/qdrant:v1.15.4`                 | Persists collections under `${DATA_DIR}/qdrant`. |
 
-### Multi-GPU endpoints
-- `infra/compose/docker-compose.yml` now exposes three Ollama services:
-  - `ollama` (shared queue, defaults to `OLLAMA_PORT`, still backing Open WebUI)
-  - `ollama-gpu0` bound to `OLLAMA_GPU0_PORT` (defaults to `11435`)
-  - `ollama-gpu1` bound to `OLLAMA_GPU1_PORT` (defaults to `11436`)
-- Layering `infra/compose/docker-compose.gpu.yml` pins each isolated instance to its GPU by exporting `NVIDIA_VISIBLE_DEVICES` and requesting a single device.
-- Override the port bindings or GPU visibility by editing `.env` before launching the stack.
+All images remain pinned so updates require an explicit PR, keeping reproducibility intact even while the rest of the stack stays modular.
 
-### Sequential chaining helper
-- `scripts/ollama_chain.py` executes a chain-of-experts workflow without keeping multiple models resident in VRAM. Supply the initial prompt via `--prompt` or `--prompt-file` and repeat `--step model[@endpoint][#directive]` for each stage.
-- Example: `python scripts/ollama_chain.py --prompt "Plane eine API" --step "deepseek-coder:6.7b@http://localhost:11435#Implementiere die API" --step "qwen2.5-coder:7b@http://localhost:11436#Code-Review" --step "llama3.1:8b#Schreibe die Doku"`.
-- Add `--transcript transcript.md` to persist the full conversation for audits.
+## State Verification
+The `docs/STATE_VERIFICATION.md` checklist summarises what is stable today and what remains experimental. Regenerate or review it after changes to confirm the following guardrails stay green:
+- `pytest` – validates compose manifests, `.env.example`, and Modelfiles without contacting external services.
+- `pwsh -File tests/pester/scripts.Tests.ps1` – mirrors the metadata checks for contributors without Python.
+- `./scripts/context-sweep.ps1 -Safe -CpuOnly -PlanOnly -WriteReport` – optional plan-only sweep to ensure evidence capture still works without large model downloads.
 
-For automation pipelines that must avoid prompts, call `./scripts/bootstrap.ps1 -NoMenu` to skip the interactive menu once provisioning is complete.
+## Continuous Integration
+Two GitHub Actions workflows keep the stack reproducible:
+- **syntax-check.yml** sets up Python, compiles the test tree, and runs the fast pytest suite. It also parses all PowerShell scripts for syntax errors.
+- **smoke-tests.yml** installs Python tooling, creates a `.env` from the example template, runs pytest and Pester, boots the compose stack with the CPU override, waits for health endpoints, records a plan-only context sweep, and captures the host state snapshot. The helper now passes `--env-file` automatically so overrides defined in the repository take effect during CI runs.
 
-## Validation & Health Checks
-- Generate a host environment fingerprint with `./scripts/bootstrap.ps1 -Report` (writes `docs/ENVIRONMENT.md` **and** archives the same output under `docs/evidence/environment/`). The report now checks for `curl`, `pytest`, `nvidia-smi`, and `ollama` in addition to the original tooling list.
-- Launch the interactive diagnostics menu explicitly with `./scripts/bootstrap.ps1 -Menu`. The menu exposes GPU evaluation, host checks, and the imported Clean repository utilities.
+## Development Notes
+- Use `./scripts/model.ps1` to list, pull, or create Modelfiles inside the running Ollama container.
+- Evidence and benchmark outputs land in `docs/evidence/` according to the paths from `.env`.
+- Keep tests under `tests/` mirrored with their implementation counterparts to stay aligned with the repository structure described in `AGENTS.md`.
 
-- Run a guarded evaluation sweep with GPU validation: `./scripts/context-sweep.ps1 -Safe -WriteReport` (add `-CpuOnly` only when CUDA resources are unavailable to keep evidence flowing into `docs/CONTEXT_RESULTS_*.md`).
-- Run local pre-commit checks before pushing: `./scripts/precommit.ps1 -Mode quick` (add `-InstallPythonDeps -InstallPester` on first run). Use `./scripts/precommit.ps1 -Mode full -Gpu` for parity with CI when GPUs are available.
-- Install a Git hook that enforces the quick gate automatically via `./scripts/hooks/install-precommit.ps1` (pass `-Mode full` or `-Gpu` to customize).
-- Tail combined service logs: `./scripts/compose.ps1 logs`.
-- Run automated smoke tests locally with `pip install -r requirements/python/dev.txt && pytest`. These checks parse `infra/compose/docker-compose.yml`, verify Modelfiles, and validate `.env.example` defaults. The same suite executes in CI via `.github/workflows/smoke-tests.yml`.
-- If PowerShell is unavailable, run `pytest tests/test_powershell_metadata.py` to mirror the lightweight Pester assertions against the helper scripts.
-- GitHub Actions boots the stack with the CPU override compose file (`infra/compose/docker-compose.ci.yml`), runs Pester, records a plan-only context sweep (the Ollama weights stay local to avoid multi-gigabyte downloads), and captures host state for reproducible evidence.
-
-The compose stack is pinned to `ollama/ollama:0.3.11`, `ghcr.io/open-webui/open-webui:v0.6.30`, and `qdrant/qdrant:v1.15.4`. Update the tags in `infra/compose/docker-compose.yml` after validating new releases.
-
-## Diagnostics & Evidence
-- GPU evaluation and host health snapshots initiated from the bootstrap menu are saved in timestamped folders under `docs/evidence/`.
-- `scripts/clean/capture_state.ps1` mirrors the Clean repository tooling: it captures `nvidia-smi` summaries, Ollama inventory, and optional Docker metadata to `docs/evidence/state/<timestamp>/`.
-- `scripts/clean/prune_evidence.ps1` prunes old snapshots from `docs/evidence/state/`, keeping the newest runs (default 5) or directories younger than the `-MaxAgeDays` threshold so evidence rotation can run unattended.
-- `scripts/clean/bench_ollama.ps1` runs repeatable latency and throughput measurements against the model defined in `.env` (default `llama3.1:8b`) using the prompt stored at `docs/prompts/bench-default.txt`. Results land in `docs/evidence/benchmarks/` as Markdown + JSON artifacts.
-- To change evidence destinations, adjust `EVIDENCE_ROOT` inside `.env`; all diagnostics respect this path.
-
-## Codex CLI Integration
-- The Codex CLI expects an API key even when proxying to local Ollama. `./scripts/bootstrap.ps1` ensures `.env` contains `OLLAMA_API_KEY=ollama-local`; rerun with `-PromptSecrets` or edit `.env` to change it.
-- Export `OLLAMA_API_KEY` from `.env` before invoking the CLI so requests succeed without breaking automation flows.
-- The bootstrap script also warns when the `codex` executable or other optional dependencies (e.g., `curl`) are missing, highlighting prerequisites before you start compose operations.
-
-## Components
-- Ollama (`ollama/ollama:0.3.11`): Local LLM runtime and model manager
-- Open WebUI (`ghcr.io/open-webui/open-webui:v0.6.30`): Web interface for chat and orchestration
-- Qdrant (`qdrant/qdrant:v1.15.4`): Vector database for embeddings/RAG
-
-See `docs/ARCHITECTURE.md` for details.
-
-## Development
-- Edit compose config in `infra/compose/docker-compose.yml`.
-- Place persistent data under `data/` and models under `models/` (git-ignored).
-- Restore tooling via the matrices listed in `requirements/README.md` to keep local installs aligned with CI.
-- Update environment report via `./scripts/bootstrap.ps1 -Report` and read `docs/ENVIRONMENT.md`.
-
-## Documentation & Reports
-- `docs/PROJECT_REPORT_2025-09-16.md`: Full operational and risk report covering stack status, tooling, and recommendations.
-- `docs/ARCHITECTURE.md`: High-level service layout and networking overview.
-- `docs/RELEASE_v2025-09-16.md`: Latest release notes and operational checklist.
-- `docs/CONTEXT_RESULTS_*.md`: Historical context sweep outcomes.
-- `docs/STACK_STATUS_2025-09-16.md`: Snapshot of available tooling, outstanding gaps, and next validation actions.
-- `docs/ENVIRONMENT.md`: Generated host environment fingerprint (regenerate after host changes).
-- `docs/RELEASE_AUDIT_2025-09-18.md`: Current release readiness audit summarising automation, documentation, and evidence gaps.
-- `docs/FULL_STACK_AUDIT_2025-09-19.md`: Latest CI and dependency audit capturing the plan-only sweep change and tooling convergence.
-- `docs/TASK_TEST_HARDENING_PROMPT_2025-09-18.md`: Actionable brief to close testing gaps before declaring release readiness.
-### GPU targeting
-- The GPU-tuned Modelfile now defaults to `main_gpu 1` so RTX 3060 hosts target the second adapter without manual edits.
-- Override the GPU index when needed: `./scripts/model.ps1 create -Model llama31-8b-gpu -MainGpu 0` or `./scripts/model.ps1 create-all -MainGpu 2` to target other adapters.
-- Context variants ignore the override, but the helper script applies it when the GPU profile is built.
-
-### Context sweeps
-- `./scripts/context-sweep.ps1` now accepts `-Profile` or honours `CONTEXT_SWEEP_PROFILE` from `.env` to switch between long-context (`llama31-long`), balanced (`qwen3-balanced`), and CPU baselines.
-- Each profile pins `num_gpu=1` to avoid dual-GPU brownouts; safe mode further trims token targets for 32k runs.
-- Use the new `-PlanOnly` switch in ephemeral CI to validate the sweep plan without downloading multi-gigabyte Ollama weights.
-- See `docs/CONTEXT_PROFILES.md` for guidance on alternative Ollama models (llama3.2:3b-instruct, phi3.5:mini, mistral-nemo) and how to register custom profiles.
-
-
-
-
-
-
+For a quick situational overview, start with `docs/STATE_VERIFICATION.md` and the latest entries under `docs/evidence/`.

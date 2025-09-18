@@ -19,6 +19,8 @@ def read_text(relative_path: str) -> str:
 def test_compose_script_exposes_expected_actions() -> None:
     content = read_text("scripts/compose.ps1")
     assert re.search(r"ValidateSet\('up','down','restart','logs'\)", content)
+    assert "--env-file" in content, "compose helper should pass repository env file to docker"
+    assert "[string[]]$File" in content, "compose helper should expose overlay parameter"
 
 
 def test_bootstrap_supports_prompt_secrets_switch() -> None:
