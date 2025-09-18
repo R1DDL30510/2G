@@ -76,30 +76,9 @@ GPU_SERVICES_CACHE = parse_services(GPU_COMPOSE_PATH)
 
 
 def test_compose_declares_expected_services() -> None:
-    expected_services = {"ollama", "ollama-gpu0", "ollama-gpu1", "open-webui", "qdrant"}
+    expected_services = {"ollama", "open-webui", "qdrant"}
     missing = expected_services.difference(SERVICES_CACHE)
     assert not missing, f"missing required services: {sorted(missing)}"
-
-
-def test_isolated_gpu_services_default_to_cpu() -> None:
-    for name, port_key, cpu_key in (
-        ("ollama-gpu0", "OLLAMA_GPU0_PORT", "OLLAMA_GPU0_USE_CPU"),
-        ("ollama-gpu1", "OLLAMA_GPU1_PORT", "OLLAMA_GPU1_USE_CPU"),
-    ):
-        service = SERVICES_CACHE[name]
-
-        environment: List[str] = service.get("environment", [])  # type: ignore[assignment]
-        assert "OLLAMA_HOST=0.0.0.0" in environment, f"{name} must bind to 0.0.0.0"
-        expected_cpu = "OLLAMA_USE_CPU=${" + cpu_key + ":-true}"
-        assert expected_cpu in environment, f"{name} must default to CPU mode"
-
-        ports: List[str] = service.get("ports", [])  # type: ignore[assignment]
-        default_port = "11435" if name.endswith("0") else "11436"
-        expected_port = "${" + port_key + ":-" + default_port + "}:11434"
-        assert any(entry.strip('"') == expected_port for entry in ports), f"{name} must expose a host port"
-
-        volumes: List[str] = service.get("volumes", [])  # type: ignore[assignment]
-        assert any("../../modelfiles" in volume for volume in volumes), f"{name} must mount modelfiles"
 
 
 def test_images_are_pinned_and_not_latest() -> None:
@@ -135,6 +114,19 @@ def test_ollama_defaults_to_cpu_mode() -> None:
 
     volumes: List[str] = ollama.get("volumes", [])  # type: ignore[assignment]
     assert any("../../modelfiles" in volume for volume in volumes), "ollama volume mounts must include modelfiles"
+    assert any(
+        volume.strip('"') == "../../${MODELS_DIR:-models}:/root/.ollama" for volume in volumes
+    ), "ollama should persist models using MODELS_DIR override"
+
+
+def test_data_root_expands_via_env_defaults() -> None:
+    for name in ("open-webui", "qdrant"):
+        service = SERVICES_CACHE[name]
+        volumes: List[str] = service.get("volumes", [])  # type: ignore[assignment]
+        assert volumes, f"{name} must declare volumes"
+        assert any(
+            volume.strip('"').startswith("../../${DATA_DIR:-data}/") for volume in volumes
+        ), f"{name} volumes should be driven by DATA_DIR overrides"
 
 
 def test_gpu_overlay_requests_cuda_resources() -> None:
@@ -154,26 +146,6 @@ def test_gpu_overlay_requests_cuda_resources() -> None:
         assert pair in environment, f"GPU overlay environment missing {pair}"
 
 
-
-
-def test_gpu_overlay_pins_isolated_devices() -> None:
-    for name, visible_key, cpu_key, allocation_key, default_device in (
-        ("ollama-gpu0", "OLLAMA_GPU0_VISIBLE_GPUS", "OLLAMA_GPU0_USE_CPU", "OLLAMA_GPU0_GPU_ALLOCATION", "0"),
-        ("ollama-gpu1", "OLLAMA_GPU1_VISIBLE_GPUS", "OLLAMA_GPU1_USE_CPU", "OLLAMA_GPU1_GPU_ALLOCATION", "1"),
-    ):
-        service = GPU_SERVICES_CACHE[name]
-
-        environment: List[str] = service.get("environment", [])  # type: ignore[assignment]
-        expected_pairs = {
-            "NVIDIA_VISIBLE_DEVICES=${" + visible_key + ":-" + default_device + "}",
-            "NVIDIA_DRIVER_CAPABILITIES=compute,utility",
-            "OLLAMA_USE_CPU=${" + cpu_key + ":-false}",
-        }
-        for pair in expected_pairs:
-            assert pair in environment, f"{name} GPU overlay environment missing {pair}"
-
-        expected_gpus = "${" + allocation_key + ":-device=" + default_device + "}"
-        assert service.get("gpus") == expected_gpus, f"{name} GPU allocation should request a single device"
 
 
 def test_open_webui_uses_expected_env_defaults() -> None:
