@@ -9,7 +9,7 @@ This repository ships a minimal Docker Compose stack for running a single Ollama
 - Optional: Node.js LTS if you work with the Codex CLI utilities
 
 ## Quickstart
-1. **Bootstrap the workspace** – `./scripts/bootstrap.ps1 -PromptSecrets` seeds `.env`, ensures the `models/` folder exists, and runs the basic host checks.
+1. **Bootstrap the workspace** – `./scripts/bootstrap.ps1 -PromptSecrets` seeds `.env`, provisions the directories referenced by `MODELS_DIR`, `EVIDENCE_ROOT`, and `LOG_FILE`, and runs the basic host checks.
 2. **Review `.env`** – adjust `OLLAMA_IMAGE`, `OLLAMA_PORT`, or `MODELS_DIR` as required. The compose helper resolves relative paths against the repository root automatically.
 3. **Start the stack** – `./scripts/compose.ps1 up` brings up the Ollama service using the repository `.env`. Add overlays with `-File` when experimenting:
    ```powershell

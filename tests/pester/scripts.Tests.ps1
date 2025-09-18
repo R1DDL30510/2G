@@ -68,6 +68,13 @@ Describe 'scripts/bootstrap.ps1' {
             ($script:bootstrapContent -match $pattern) | Should -BeTrue
         }
     }
+
+    It 'normalises repository-relative directories' {
+        $script:bootstrapContent.Contains('function Resolve-RepoPath') | Should -BeTrue
+        $script:bootstrapContent.Contains('Resolve-RepoPath -Path $modelsDirValue') | Should -BeTrue
+        $script:bootstrapContent.Contains('Resolve-RepoPath -Path $logDirValue') | Should -BeTrue
+        $script:bootstrapContent.Contains('[System.IO.Path]::GetDirectoryName($logFileValue)') | Should -BeTrue
+    }
 }
 
 Describe 'context evaluation tooling' {
