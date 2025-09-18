@@ -1,4 +1,8 @@
 if (-not $PSScriptRoot) {
+    $PSScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Definition
+}
+
+if (-not $PSScriptRoot) {
     throw "PSScriptRoot was not populated; unable to determine repository root."
 }
 
