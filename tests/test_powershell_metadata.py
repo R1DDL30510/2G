@@ -16,6 +16,19 @@ def read_text(relative_path: str) -> str:
     return (REPO_ROOT / relative_path).read_text(encoding="utf-8")
 
 
+def test_get_env_value_extracts_value_group() -> None:
+    scripts = [
+        "scripts/bootstrap.ps1",
+        "scripts/context-sweep.ps1",
+        "scripts/clean/prune_evidence.ps1",
+        "scripts/clean/capture_state.ps1",
+        "scripts/clean/bench_ollama.ps1",
+    ]
+    for script in scripts:
+        content = read_text(script)
+        assert "return $Matches[2]" in content, f"{script} should capture the value portion of .env entries"
+
+
 def test_compose_script_exposes_expected_actions() -> None:
     content = read_text("scripts/compose.ps1")
     assert re.search(r"ValidateSet\('up','down','restart','logs'\)", content)

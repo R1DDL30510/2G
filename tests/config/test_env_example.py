@@ -40,6 +40,8 @@ def test_env_example_contains_expected_keys() -> None:
         "OLLAMA_BENCH_MODEL",
         "OLLAMA_BENCH_PROMPT",
         "EVIDENCE_ROOT",
+        "OLLAMA_VISIBLE_GPUS",
+        "OLLAMA_GPU_ALLOCATION",
         "LOG_FILE",
     }
     missing = expected_keys.difference(env)
@@ -67,3 +69,9 @@ def test_relative_directories_are_not_absolute() -> None:
     for key in ("MODELS_DIR", "DATA_DIR", "EVIDENCE_ROOT", "LOG_FILE"):
         value = env[key]
         assert value.startswith("."), f"{key} should use a repository-relative path"
+
+
+def test_gpu_defaults_target_second_adapter() -> None:
+    env = load_env()
+    assert env["OLLAMA_VISIBLE_GPUS"] == "1", "default GPU index should be 1"
+    assert env["OLLAMA_GPU_ALLOCATION"] == "device=1", "default GPU allocation should pin device 1"

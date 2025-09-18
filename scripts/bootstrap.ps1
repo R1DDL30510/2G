@@ -60,7 +60,7 @@ function Get-EnvValue {
     }
     foreach ($line in Get-Content $envFile) {
         if ($line -match "^\s*$([regex]::Escape($Key))=(.+)$") {
-            return $Matches[1]
+            return $Matches[2]
         }
     }
     return $null
@@ -375,6 +375,8 @@ function Invoke-WorkspaceProvisioning {
     $null = Ensure-EnvEntry -Path $envLocal -Key 'OLLAMA_BASE_URL' -DefaultValue 'http://localhost:11434' -Comment 'Base URL for local Ollama API. Used by health checks and benchmarking.' -PromptValue:$PromptSecrets
     $null = Ensure-EnvEntry -Path $envLocal -Key 'OLLAMA_BENCH_MODEL' -DefaultValue 'llama3.1:8b' -Comment 'Default model targeted by scripts/clean/bench_ollama.ps1.' -PromptValue:$PromptSecrets
     $null = Ensure-EnvEntry -Path $envLocal -Key 'OLLAMA_BENCH_PROMPT' -DefaultValue './docs/prompts/bench-default.txt' -Comment 'Prompt file consumed by bench_ollama.ps1 during latency sampling.' -PromptValue:$PromptSecrets
+    $null = Ensure-EnvEntry -Path $envLocal -Key 'OLLAMA_VISIBLE_GPUS' -DefaultValue '1' -Comment 'Default GPU index forwarded to NVIDIA_VISIBLE_DEVICES (set to all for unrestricted scheduling).' -PromptValue:$PromptSecrets
+    $null = Ensure-EnvEntry -Path $envLocal -Key 'OLLAMA_GPU_ALLOCATION' -DefaultValue 'device=1' -Comment 'Default compose --gpus setting (use device=0, device=1, all, etc.).' -PromptValue:$PromptSecrets
     $null = Ensure-EnvEntry -Path $envLocal -Key 'EVIDENCE_ROOT' -DefaultValue './docs/evidence' -Comment 'Destination directory for diagnostics artifacts.' -PromptValue:$PromptSecrets
     $null = Ensure-EnvEntry -Path $envLocal -Key 'CONTEXT_SWEEP_PROFILE' -DefaultValue 'llama31-long' -Comment 'Default context sweep profile (llama31-long, qwen3-balanced, cpu-baseline).' -PromptValue:$PromptSecrets
 

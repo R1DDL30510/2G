@@ -46,7 +46,27 @@ Describe 'context evaluation tooling' {
         }
     }
 
+    It 'defaults GPU-backed profiles to index 1' {
+        ($script:sweepContent -match 'MainGpu\s*=\s*1') | Should -BeTrue
+    }
+
     It 'eval-context exposes CpuOnly switch' {
         ($script:evalContent -match '\[switch\]\$CpuOnly') | Should -BeTrue
+    }
+}
+
+Describe 'evidence maintenance tooling' {
+    BeforeAll {
+        $script:prunePath = Join-Path -Path $repoRoot -ChildPath 'scripts/clean/prune_evidence.ps1'
+        $script:pruneContent = Get-Content -Path $script:prunePath -Raw
+    }
+
+    It 'supports configurable retention windows' {
+        ($script:pruneContent -match '\[int\]\$DaysToKeep') | Should -BeTrue
+        ($script:pruneContent -match '\[int\]\$MinimumPerCategory') | Should -BeTrue
+    }
+
+    It 'reads evidence root from .env when unspecified' {
+        ($script:pruneContent -match "Get-EnvValue -Key 'EVIDENCE_ROOT'") | Should -BeTrue
     }
 }
