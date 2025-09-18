@@ -134,7 +134,7 @@ if ($IncludeDocker) {
         $report += '- docker info unavailable.'
     }
 
-    $composeFile = Join-Path $repoRoot 'infra\compose\docker-compose.yml'
+    $composeFile = [System.IO.Path]::Combine($repoRoot, 'infra', 'compose', 'docker-compose.yml')
     if (Test-Path $composeFile) {
         $psResult = Invoke-CommandCapture -Command 'docker' -Arguments @('compose', '-f', $composeFile, 'ps')
         if ($psResult.Success -and $psResult.Output) {
