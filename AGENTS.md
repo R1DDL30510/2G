@@ -11,7 +11,7 @@
 - `./scripts/compose.ps1 up|down|restart|logs` manages the full stack from PowerShell.
 - `docker compose -f infra/compose/docker-compose.yml up -d` runs services headless for CI or remote hosts.
 - `./scripts/model.ps1 pull -Model llama3.1:8b` fetches models; pair with `list` or `create-all` to audit local inventory.
-- `pip install -r requirements-dev.txt && pytest` executes smoke tests that validate compose manifests, Modelfiles, and `.env.example` defaults.
+- `pip install -r requirements/python/dev.txt && pytest` executes smoke tests that validate compose manifests, Modelfiles, and `.env.example` defaults.
 
 ## Coding Style & Naming Conventions
 - Follow `.editorconfig`: 2 spaces for JavaScript, TypeScript, JSON, YAML, and Markdown; 4 spaces for Python, C#, and PowerShell.
@@ -30,5 +30,5 @@
 
 ## Security & Configuration Tips
 - Never commit secrets; sync `.env` with `.env.example` using `./scripts/bootstrap.ps1 -PromptSecrets` when credentials change.
-- The stack pins `ollama/ollama:0.3.14`, `ghcr.io/open-webui/open-webui:v0.3.7`, and `qdrant/qdrant:v1.15.4`; validate updates on a branch before promoting.
+- The stack pins `ollama/ollama:0.3.11`, `ghcr.io/open-webui/open-webui:v0.3.7`, and `qdrant/qdrant:v1.15.4`; validate updates on a branch before promoting.
 - Store large artifacts in `data/` or `models/`, and export backups prior to pruning containers or volumes.

@@ -7,7 +7,7 @@
 ## Stack Components at a Glance
 | Service | Image & Version | Role | Windows Host Port |
 |---------|-----------------|------|-------------------|
-| Ollama | `ollama/ollama:0.11.11` | Local LLM runtime and model manager. | `11434` | 【F:README.md†L41-L44】【F:infra/compose/docker-compose.yml†L1-L14】
+| Ollama | `ollama/ollama:0.3.11` | Local LLM runtime and model manager. | `11434` | 【F:README.md†L41-L44】【F:infra/compose/docker-compose.yml†L1-L14】
 | Open WebUI | `ghcr.io/open-webui/open-webui:v0.3.7` | Chat and orchestration UI backed by Ollama. | `3000` | 【F:README.md†L15-L16】【F:infra/compose/docker-compose.yml†L16-L28】
 | Qdrant | `qdrant/qdrant:v1.15.4` | Vector store for embeddings/RAG flows. | `6333` | 【F:README.md†L41-L44】【F:infra/compose/docker-compose.yml†L29-L35】
 
@@ -18,7 +18,7 @@ Data folders (`data/`, `models/`, `docs/evidence/`) are created by the bootstrap
 - **Compose lifecycle** – `./scripts/compose.ps1` wraps `docker compose` for `up`, `down`, `restart`, and `logs`, and CI consumes the CPU override manifest. 【F:docs/STACK_STATUS_2025-09-16.md†L12-L13】
 - **Model management** – `./scripts/model.ps1 create-all -MainGpu <index>` provisions Modelfiles so Windows hosts can recreate long-context and GPU variants after bootstrap. 【F:docs/STACK_STATUS_2025-09-16.md†L7-L14】
 - **Diagnostics & evidence** – Context sweeps, benchmarks, and host state capture are wired into scripts and store artifacts under `docs/evidence/` when run. 【F:README.md†L20-L34】【F:docs/STACK_STATUS_2025-09-16.md†L14-L17】【F:scripts/bootstrap.ps1†L418-L455】
-- **Smoke testing** – `pip install -r requirements-dev.txt && pytest` passes (13 tests) and guards compose manifests, Modelfiles, and `.env.example` defaults. 【F:README.md†L20-L26】【F:docs/STACK_STATUS_2025-09-16.md†L19-L22】
+- **Smoke testing** – `pip install -r requirements/python/dev.txt && pytest` passes (13 tests) and guards compose manifests, Modelfiles, and `.env.example` defaults. 【F:README.md†L20-L26】【F:docs/STACK_STATUS_2025-09-16.md†L19-L22】
 
 ## Outstanding Gaps
 - GPU-enabled sweeps and performance benchmarks remain pending; current evidence is CPU-only. 【F:docs/STACK_STATUS_2025-09-16.md†L23-L27】【F:docs/COVERAGE_REPORT_2025-09-17.md†L25-L33】
@@ -31,7 +31,7 @@ Data folders (`data/`, `models/`, `docs/evidence/`) are created by the bootstrap
 2. **Start core services** – Launch the compose stack via `./scripts/compose.ps1 up` (or `docker compose -f infra/compose/docker-compose.yml up -d`) and confirm Ollama, Open WebUI, and Qdrant respond on their pinned ports. 【F:README.md†L15-L16】【F:docs/STACK_STATUS_2025-09-16.md†L31-L34】
 3. **Install models** – Execute `./scripts/model.ps1 create-all -MainGpu <index>` followed by `./scripts/model.ps1 list` to ensure the RAG-ready model set exists on disk. 【F:docs/STACK_STATUS_2025-09-16.md†L7-L14】【F:docs/STACK_STATUS_2025-09-16.md†L34-L35】
 4. **Validate diagnostics** – Run `./scripts/context-sweep.ps1 -Safe -Profile llama31-long -WriteReport`, `./scripts/clean/capture_state.ps1`, and `./scripts/clean/bench_ollama.ps1` to populate evidence with current metrics. 【F:docs/STACK_STATUS_2025-09-16.md†L14-L17】【F:docs/STACK_STATUS_2025-09-16.md†L35-L36】
-5. **Run smoke tests** – `pip install -r requirements-dev.txt && pytest` must pass locally before promoting a build. 【F:README.md†L20-L26】【F:docs/STACK_STATUS_2025-09-16.md†L19-L22】
+5. **Run smoke tests** – `pip install -r requirements/python/dev.txt && pytest` must pass locally before promoting a build. 【F:README.md†L20-L26】【F:docs/STACK_STATUS_2025-09-16.md†L19-L22】
 
 This set mirrors the operator checklist already tracked in the stack status report and defines the minimal reproducible workflow we can stand behind on Windows. 【F:docs/STACK_STATUS_2025-09-16.md†L31-L37】
 

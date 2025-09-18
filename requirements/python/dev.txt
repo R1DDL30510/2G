@@ -1,0 +1,2 @@
+# Development installs include everything the CI uses so local runs stay in sync.
+-r base.txt

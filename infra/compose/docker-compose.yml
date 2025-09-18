@@ -1,41 +1,4 @@
-services:
-  ollama:
-    image: ollama/ollama:0.11.11
-    restart: unless-stopped
-    ports:
-      - "${OLLAMA_PORT:-11434}:11434"
-    volumes:
-      - ${MODELS_DIR:-../../models}:/root/.ollama
-      - ../../modelfiles:/modelfiles:ro
-    environment:
-      - OLLAMA_HOST=0.0.0.0
-      - OLLAMA_USE_CPU=${OLLAMA_USE_CPU:-true}
-
-  ollama-gpu0:
-    image: ollama/ollama:0.11.11
-    restart: unless-stopped
-    ports:
-      - "${OLLAMA_GPU0_PORT:-11435}:11434"
-    volumes:
-      - ${MODELS_DIR:-../../models}:/root/.ollama
-      - ../../modelfiles:/modelfiles:ro
-    environment:
-      - OLLAMA_HOST=0.0.0.0
-      - OLLAMA_USE_CPU=${OLLAMA_GPU0_USE_CPU:-true}
-
-  ollama-gpu1:
-    image: ollama/ollama:0.11.11
-    restart: unless-stopped
-    ports:
-      - "${OLLAMA_GPU1_PORT:-11436}:11434"
-    volumes:
-      - ${MODELS_DIR:-../../models}:/root/.ollama
-      - ../../modelfiles:/modelfiles:ro
-    environment:
-      - OLLAMA_HOST=0.0.0.0
-      - OLLAMA_USE_CPU=${OLLAMA_GPU1_USE_CPU:-true}
-
-  open-webui:
+ open-webui:
     image: ghcr.io/open-webui/open-webui:v0.3.7
     restart: unless-stopped
     depends_on:
@@ -57,3 +20,4 @@ services:
       - ${DATA_DIR:-../../data}/qdrant:/qdrant/storage
 
 volumes: {}
+

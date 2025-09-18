@@ -2,6 +2,7 @@ param(
     [switch]$WriteReport,
     [switch]$CpuOnly,
     [switch]$Safe,
+    [switch]$PlanOnly,
     [int]$InterRunDelaySec = 5,
     [string]$Profile,
     [int]$GpuCooldownSec = 15
@@ -41,6 +42,11 @@ function Copy-Hashtable {
 function Get-GpuInventory {
     try {
         $raw = & nvidia-smi --query-gpu=index,name,memory.total --format=csv,noheader
+        $exitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
+        if ($exitCode -ne 0) {
+            Write-Verbose ("nvidia-smi exited with code {0}; assuming no GPUs are available." -f $exitCode)
+            return @()
+        }
     }
     catch {
         Write-Verbose ("Unable to query GPUs via nvidia-smi: " + $_.Exception.Message)
@@ -133,6 +139,9 @@ if (-not $useCpuOnly) {
 }
 
 Write-Host ("Context sweep profile: {0} (safe mode: {1}; cpu only: {2})" -f $Profile, $Safe.IsPresent, $useCpuOnly)
+if ($PlanOnly.IsPresent) {
+    Write-Warning 'Plan-only mode enabled; skipping Ollama evaluation and recording the test plan only.'
+}
 
 $planBase = foreach ($entry in $profiles[$Profile]) {
     $tokens = if ($Safe.IsPresent -and $entry.ContainsKey('TokensSafe')) { $entry.TokensSafe } else { $entry.TokensDefault }
@@ -181,6 +190,7 @@ if (-not $useCpuOnly -and $gpuInventory.Count -gt 0) {
 
 $rows = @()
 $lastGpuIndex = $null
+$hadFailures = $false
 
 foreach ($t in $plan) {
     if (-not $useCpuOnly -and $GpuCooldownSec -gt 0) {
@@ -194,6 +204,20 @@ foreach ($t in $plan) {
     $deviceSuffix = if ($useCpuOnly) { ' [CPU]' } elseif ($t.GpuName) { " [GPU $($t.GpuIndex) - $($t.GpuName)]" } else { " [$deviceLabel]" }
 
     Write-Host ("Testing {0} @ {1} tokens (timeout {2}s){3}" -f $t.Model, $t.Tokens, $t.Timeout, $deviceSuffix)
+    if ($PlanOnly.IsPresent) {
+        $rows += [pscustomobject]@{
+            Model = $t.Model
+            Tokens = $t.Tokens
+            OK = 'plan-only'
+            Latency = 'n/a'
+            Device = $deviceLabel
+            Notes = 'plan-only execution (no Ollama call)'
+        }
+        $lastGpuIndex = $t.GpuIndex
+        if ($InterRunDelaySec -gt 0) { Start-Sleep -Seconds $InterRunDelaySec }
+        continue
+    }
+
     $args = @{
         Model = $t.Model
         TokensTarget = $t.Tokens
@@ -210,8 +234,26 @@ foreach ($t in $plan) {
         if ($t.Options.ContainsKey('NumThread')) { $args['NumThread'] = $t.Options.NumThread }
     }
 
-    $out = & $eval @args 2>$null
-    if (-not $out) {
+    $out = & $eval @args 2>&1
+    $exitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
+    $outText = if ($out -is [System.Array]) { $out -join [Environment]::NewLine } else { [string]$out }
+
+    if ($exitCode -ne 0) {
+        $rows += [pscustomobject]@{
+            Model = $t.Model
+            Tokens = $t.Tokens
+            OK = $false
+            Latency = 'n/a'
+            Device = $deviceLabel
+            Notes = "exit code $exitCode"
+        }
+        $hadFailures = $true
+        $lastGpuIndex = $t.GpuIndex
+        if ($InterRunDelaySec -gt 0) { Start-Sleep -Seconds $InterRunDelaySec }
+        continue
+    }
+
+    if (-not $outText) {
         $rows += [pscustomobject]@{
             Model = $t.Model
             Tokens = $t.Tokens
@@ -220,21 +262,24 @@ foreach ($t in $plan) {
             Device = $deviceLabel
             Notes = 'no output'
         }
+        $hadFailures = $true
         $lastGpuIndex = $t.GpuIndex
         if ($InterRunDelaySec -gt 0) { Start-Sleep -Seconds $InterRunDelaySec }
         continue
     }
 
-    $m = [regex]::Match($out, 'Model:\s+(?<model>\S+)\s+OK:\s+(?<ok>\S+)\s+Latency\(s\):\s+(?<lat>[^\s]+)')
+    $m = [regex]::Match($outText, 'Model:\s+(?<model>\S+)\s+OK:\s+(?<ok>\S+)\s+Latency\(s\):\s+(?<lat>[^\s]+)')
     if ($m.Success) {
+        $ok = [bool]::Parse($m.Groups['ok'].Value)
         $rows += [pscustomobject]@{
             Model = $m.Groups['model'].Value
             Tokens = $t.Tokens
-            OK = [bool]::Parse($m.Groups['ok'].Value)
+            OK = $ok
             Latency = $m.Groups['lat'].Value
             Device = $deviceLabel
             Notes = ''
         }
+        if (-not $ok) { $hadFailures = $true }
     } else {
         $rows += [pscustomobject]@{
             Model = $t.Model
@@ -242,8 +287,9 @@ foreach ($t in $plan) {
             OK = $false
             Latency = 'n/a'
             Device = $deviceLabel
-            Notes = ($out -replace '\s+', ' ').Trim()
+            Notes = ($outText -replace '\s+', ' ').Trim()
         }
+        $hadFailures = $true
     }
 
     $lastGpuIndex = $t.GpuIndex
@@ -268,4 +314,7 @@ if ($WriteReport) {
     }
     Set-Content -Path $reportPath -Value ($md -join "`n") -Encoding UTF8
     Write-Output ("Wrote report: " + $reportPath)
+}
+if ($hadFailures) {
+    exit 1
 }

@@ -36,7 +36,10 @@ def test_gpu_modelfile_declares_gpu_parameters() -> None:
 
     lines = normalise_lines(gpu_file)
     assert any(line.startswith("PARAMETER num_gpu") for line in lines), "GPU Modelfile must request GPU layers"
-    assert any(line.startswith("PARAMETER main_gpu") for line in lines), "GPU Modelfile must nominate a primary GPU"
+    main_gpu_lines = [line for line in lines if line.startswith("PARAMETER main_gpu")]
+    assert main_gpu_lines == [
+        "PARAMETER main_gpu 1"
+    ], "GPU Modelfile must nominate GPU index 1 by default"
 
 
 def test_context_window_parameters_are_positive() -> None:

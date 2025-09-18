@@ -1,1 +1,2 @@
-pytest>=8.2,<9
+# Wrapper kept for backwards compatibility with existing docs/scripts.
+-r requirements/python/dev.txt
