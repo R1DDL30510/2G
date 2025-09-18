@@ -98,15 +98,15 @@ if (-not $Profile) {
 
 $profiles = @{
     'llama31-long' = @(
-        @{ Model='llama31-8b-c4k'; TokensDefault=2500; TokensSafe=1800; TimeoutDefault=210; TimeoutSafe=160; Options=@{ NumGpu = 1; MainGpu = 0; NumCtx = 4096 } },
-        @{ Model='llama31-8b-c8k'; TokensDefault=5000; TokensSafe=3200; TimeoutDefault=270; TimeoutSafe=210; Options=@{ NumGpu = 1; MainGpu = 0; NumCtx = 8192 } },
-        @{ Model='llama31-8b-c16k'; TokensDefault=9000; TokensSafe=6000; TimeoutDefault=360; TimeoutSafe=300; Options=@{ NumGpu = 1; MainGpu = 0; NumCtx = 16384 } },
-        @{ Model='llama31-8b-c32k'; TokensDefault=16000; TokensSafe=9000; TimeoutDefault=480; TimeoutSafe=360; Options=@{ NumGpu = 1; MainGpu = 0; NumCtx = 32768 } }
+        @{ Model='llama31-8b-c4k'; TokensDefault=2500; TokensSafe=1800; TimeoutDefault=210; TimeoutSafe=160; Options=@{ NumGpu = 1; MainGpu = 1; NumCtx = 4096 } },
+        @{ Model='llama31-8b-c8k'; TokensDefault=5000; TokensSafe=3200; TimeoutDefault=270; TimeoutSafe=210; Options=@{ NumGpu = 1; MainGpu = 1; NumCtx = 8192 } },
+        @{ Model='llama31-8b-c16k'; TokensDefault=9000; TokensSafe=6000; TimeoutDefault=360; TimeoutSafe=300; Options=@{ NumGpu = 1; MainGpu = 1; NumCtx = 16384 } },
+        @{ Model='llama31-8b-c32k'; TokensDefault=16000; TokensSafe=9000; TimeoutDefault=480; TimeoutSafe=360; Options=@{ NumGpu = 1; MainGpu = 1; NumCtx = 32768 } }
     );
     'qwen3-balanced' = @(
-        @{ Model='qwen3:8b'; TokensDefault=3000; TokensSafe=2200; TimeoutDefault=200; TimeoutSafe=160; Options=@{ NumGpu = 1; MainGpu = 0; NumCtx = 4096 } },
-        @{ Model='qwen3:8b'; TokensDefault=6000; TokensSafe=4200; TimeoutDefault=280; TimeoutSafe=220; Options=@{ NumGpu = 1; MainGpu = 0; NumCtx = 8192 } },
-        @{ Model='qwen3:8b'; TokensDefault=9000; TokensSafe=6000; TimeoutDefault=360; TimeoutSafe=300; Options=@{ NumGpu = 1; MainGpu = 0; NumCtx = 12000 } }
+        @{ Model='qwen3:8b'; TokensDefault=3000; TokensSafe=2200; TimeoutDefault=200; TimeoutSafe=160; Options=@{ NumGpu = 1; MainGpu = 1; NumCtx = 4096 } },
+        @{ Model='qwen3:8b'; TokensDefault=6000; TokensSafe=4200; TimeoutDefault=280; TimeoutSafe=220; Options=@{ NumGpu = 1; MainGpu = 1; NumCtx = 8192 } },
+        @{ Model='qwen3:8b'; TokensDefault=9000; TokensSafe=6000; TimeoutDefault=360; TimeoutSafe=300; Options=@{ NumGpu = 1; MainGpu = 1; NumCtx = 12000 } }
     );
     'cpu-baseline' = @(
         @{ Model='llama3.1:8b'; TokensDefault=2000; TokensSafe=1500; TimeoutDefault=360; TimeoutSafe=300; Options=@{} }

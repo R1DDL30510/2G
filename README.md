@@ -11,11 +11,11 @@ Optional: Python 3.10+, Node.js LTS, PowerShell 7 for scripts.
 
 ## Quickstart
 1. Initialize the workspace: `./scripts/bootstrap.ps1 -PromptSecrets` (creates `.env`, `data/`, and `models/`, and lets you confirm CLI keys interactively). Running `./scripts/bootstrap.ps1` without switches now opens an interactive menu so you can trigger health checks and benchmarks from one place.
-2. Adjust `.env` if you need different ports or storage paths. Benchmark defaults (model, prompt, evidence directory) are stored in `.env` under the *Diagnostics and benchmarking* section. The template also seeds `LOG_FILE=./logs/stack.log` so compose and script logs consolidate under `./logs/`.
+2. Adjust `.env` if you need different ports, storage paths, or GPU routing. Benchmark defaults (model, prompt, evidence directory) are stored in `.env` under the *Diagnostics and benchmarking* section. The template also seeds `LOG_FILE=./logs/stack.log` so compose and script logs consolidate under `./logs/`, and introduces `OLLAMA_VISIBLE_GPUS` / `OLLAMA_GPU_ALLOCATION` so you can re-point Ollama to a different adapter when GPU 1 is not the desired default.
 3. Start the stack: `./scripts/compose.ps1 up` (PowerShell).
 4. Open WebUI: http://localhost:3000 (connects to local Ollama at http://localhost:11434).
 
-GPU hosts should layer the GPU overlay when starting the stack directly with Docker Compose: `docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.gpu.yml up -d`. The base file now defaults Ollama to CPU mode so CI and non-NVIDIA machines can boot the stack without errors; the overlay re-enables CUDA by requesting GPU resources and restoring the NVIDIA environment variables.
+GPU hosts should layer the GPU overlay when starting the stack directly with Docker Compose: `docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.gpu.yml up -d`. The base file now defaults Ollama to CPU mode so CI and non-NVIDIA machines can boot the stack without errors; the overlay re-enables CUDA, pins GPU **1** (`NVIDIA_VISIBLE_DEVICES=${OLLAMA_VISIBLE_GPUS:-1}`), and honours `OLLAMA_GPU_ALLOCATION` so RTX 3060 hosts run on the second adapter by default.
 
 For automation pipelines that must avoid prompts, call `./scripts/bootstrap.ps1 -NoMenu` to skip the interactive menu once provisioning is complete.
 
@@ -36,6 +36,7 @@ The compose stack is pinned to `ollama/ollama:0.3.14`, `ghcr.io/open-webui/open-
 - GPU evaluation and host health snapshots initiated from the bootstrap menu are saved in timestamped folders under `docs/evidence/`.
 - `scripts/clean/capture_state.ps1` mirrors the Clean repository tooling: it captures `nvidia-smi` summaries, Ollama inventory, and optional Docker metadata to `docs/evidence/state/<timestamp>/`.
 - `scripts/clean/bench_ollama.ps1` runs repeatable latency and throughput measurements against the model defined in `.env` (default `llama3.1:8b`) using the prompt stored at `docs/prompts/bench-default.txt`. Results land in `docs/evidence/benchmarks/` as Markdown + JSON artifacts.
+- `scripts/clean/prune_evidence.ps1` enforces retention by trimming evidence folders older than your configured window while keeping a safety net of recent runs per category.
 - To change evidence destinations, adjust `EVIDENCE_ROOT` inside `.env`; all diagnostics respect this path.
 
 ## Codex CLI Integration
@@ -67,9 +68,9 @@ See `docs/ARCHITECTURE.md` for details.
 - `docs/FULL_STACK_AUDIT_2025-09-19.md`: Latest CI and dependency audit capturing the plan-only sweep change and tooling convergence.
 - `docs/TASK_TEST_HARDENING_PROMPT_2025-09-18.md`: Actionable brief to close testing gaps before declaring release readiness.
 ### GPU targeting
-- The GPU-tuned Modelfile now defaults to `main_gpu 0` so single-GPU hosts can create it without edits.
-- Override the GPU index when needed: `./scripts/model.ps1 create -Model llama31-8b-gpu -MainGpu 1` or `./scripts/model.ps1 create-all -MainGpu 1`.
-- Context variants ignore the override, but the helper script applies it when the GPU profile is built.
+- The GPU-tuned Modelfile now defaults to `main_gpu 1`, aligning with hosts where GPU 0 is reserved for display workloads and GPU 1 (RTX 3060) handles inference.
+- Override the GPU index when needed: `./scripts/model.ps1 create -Model llama31-8b-gpu -MainGpu 0` or `./scripts/model.ps1 create-all -MainGpu 0` to reassign workloads to the first adapter, or pass any other index as required.
+- Context profiles and the compose GPU overlay both honour `OLLAMA_VISIBLE_GPUS`/`OLLAMA_GPU_ALLOCATION` so sweeping and model creation stay aligned.
 
 ### Context sweeps
 - `./scripts/context-sweep.ps1` now accepts `-Profile` or honours `CONTEXT_SWEEP_PROFILE` from `.env` to switch between long-context (`llama31-long`), balanced (`qwen3-balanced`), and CPU baselines.
