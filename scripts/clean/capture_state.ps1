@@ -5,27 +5,23 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$repoRoot = Split-Path -Parent $scriptRoot
+$commonCandidates = @(
+    Join-Path $scriptRoot 'common/repo-paths.ps1'),
+    Join-Path (Split-Path -Parent $scriptRoot) 'common/repo-paths.ps1'
+)
+$repoHelperPath = $commonCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+if (-not $repoHelperPath) {
+    throw 'Unable to locate scripts/common/repo-paths.ps1'
+}
+. $repoHelperPath
+
+$repoRoot = Get-RepositoryRoot -StartingPath $scriptRoot
 
 function Ensure-Directory {
     param([Parameter(Mandatory = $true)][string]$Path)
     if (-not (Test-Path $Path)) {
         New-Item -Path $Path -ItemType Directory -Force | Out-Null
     }
-}
-
-function Get-EnvValue {
-    param([string]$Key)
-    $envFile = Join-Path $repoRoot '.env'
-    if (-not (Test-Path $envFile)) {
-        return $null
-    }
-    foreach ($line in Get-Content $envFile) {
-        if ($line -match "^\s*$([regex]::Escape($Key))=(.+)$") {
-            return $Matches[1]
-        }
-    }
-    return $null
 }
 
 function Invoke-CommandCapture {
@@ -51,18 +47,10 @@ function Invoke-CommandCapture {
 }
 
 if (-not $OutputRoot) {
-    $evidenceEnv = Get-EnvValue -Key 'EVIDENCE_ROOT'
-    if ($evidenceEnv) {
-        if ([System.IO.Path]::IsPathRooted($evidenceEnv)) {
-            $OutputRoot = $evidenceEnv
-        }
-        else {
-            $OutputRoot = Join-Path $repoRoot $evidenceEnv
-        }
-    }
-    else {
-        $OutputRoot = Join-Path $repoRoot 'docs/evidence'
-    }
+    $OutputRoot = Get-RepoEvidenceRoot -RepoRoot $repoRoot
+}
+else {
+    $OutputRoot = Resolve-RepoPath -RepoRoot $repoRoot -Path $OutputRoot
 }
 
 Ensure-Directory -Path $OutputRoot

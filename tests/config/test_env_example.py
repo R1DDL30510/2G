@@ -34,6 +34,9 @@ def test_env_example_contains_expected_keys() -> None:
         "QDRANT_PORT",
         "MODELS_DIR",
         "DATA_DIR",
+        "OLLAMA_VISIBLE_GPUS",
+        "OLLAMA_GPU_ALLOCATION",
+        "DEFAULT_GPU_INDEX",
         "OPENWEBUI_AUTH",
         "OLLAMA_API_KEY",
         "OLLAMA_BASE_URL",
@@ -51,6 +54,13 @@ def test_ports_are_numeric() -> None:
     for key in ("WEBUI_PORT", "OLLAMA_PORT", "QDRANT_PORT"):
         value = env[key]
         assert value.isdigit(), f"{key} should be a numeric port"
+
+
+def test_gpu_defaults_are_configured() -> None:
+    env = load_env()
+    assert env["OLLAMA_VISIBLE_GPUS"], "OLLAMA_VISIBLE_GPUS should not be empty"
+    assert env["OLLAMA_GPU_ALLOCATION"].startswith("device="), "OLLAMA_GPU_ALLOCATION should reference a specific device"
+    assert env["DEFAULT_GPU_INDEX"].isdigit(), "DEFAULT_GPU_INDEX should be numeric"
 
 
 def test_prompt_reference_exists() -> None:

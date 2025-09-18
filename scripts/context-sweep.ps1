@@ -9,22 +9,19 @@ param(
 )
 
 $ErrorActionPreference = 'Stop'
-$repoRoot = Split-Path -Parent $MyInvocation.MyCommand.Path | Split-Path -Parent
-$eval = Join-Path $repoRoot 'scripts/eval-context.ps1'
-
-function Get-EnvValue {
-    param([string]$Key)
-    $envPath = Join-Path $repoRoot '.env'
-    if (-not (Test-Path $envPath)) {
-        return $null
-    }
-    foreach ($line in Get-Content $envPath) {
-        if ($line -match "^\s*$([regex]::Escape($Key))=(.+)$") {
-            return $Matches[1]
-        }
-    }
-    return $null
+$scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$commonCandidates = @(
+    Join-Path $scriptRoot 'common/repo-paths.ps1'),
+    Join-Path (Split-Path -Parent $scriptRoot) 'common/repo-paths.ps1'
+)
+$repoHelperPath = $commonCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+if (-not $repoHelperPath) {
+    throw 'Unable to locate scripts/common/repo-paths.ps1'
 }
+. $repoHelperPath
+
+$repoRoot = Get-RepositoryRoot -StartingPath $scriptRoot
+$eval = Join-Path $repoRoot 'scripts/eval-context.ps1'
 
 function Copy-Hashtable {
     param([hashtable]$Source)
@@ -85,8 +82,21 @@ function Get-GpuInventory {
     return $list
 }
 
+function Get-PreferredGpuIndex {
+    $preferred = 1
+    $envValue = Get-RepoEnvValue -RepoRoot $repoRoot -Key 'DEFAULT_GPU_INDEX'
+    if ($envValue) {
+        $parsed = 0
+        if ([int]::TryParse($envValue, [ref]$parsed)) {
+            $preferred = $parsed
+        }
+    }
+
+    return [int]$preferred
+}
+
 if (-not $Profile) {
-    $envProfile = Get-EnvValue -Key 'CONTEXT_SWEEP_PROFILE'
+    $envProfile = Get-RepoEnvValue -RepoRoot $repoRoot -Key 'CONTEXT_SWEEP_PROFILE'
     if ($envProfile) {
         $Profile = $envProfile
     }
@@ -98,15 +108,15 @@ if (-not $Profile) {
 
 $profiles = @{
     'llama31-long' = @(
-        @{ Model='llama31-8b-c4k'; TokensDefault=2500; TokensSafe=1800; TimeoutDefault=210; TimeoutSafe=160; Options=@{ NumGpu = 1; MainGpu = 0; NumCtx = 4096 } },
-        @{ Model='llama31-8b-c8k'; TokensDefault=5000; TokensSafe=3200; TimeoutDefault=270; TimeoutSafe=210; Options=@{ NumGpu = 1; MainGpu = 0; NumCtx = 8192 } },
-        @{ Model='llama31-8b-c16k'; TokensDefault=9000; TokensSafe=6000; TimeoutDefault=360; TimeoutSafe=300; Options=@{ NumGpu = 1; MainGpu = 0; NumCtx = 16384 } },
-        @{ Model='llama31-8b-c32k'; TokensDefault=16000; TokensSafe=9000; TimeoutDefault=480; TimeoutSafe=360; Options=@{ NumGpu = 1; MainGpu = 0; NumCtx = 32768 } }
+        @{ Model='llama31-8b-c4k'; TokensDefault=2500; TokensSafe=1800; TimeoutDefault=210; TimeoutSafe=160; Options=@{ NumGpu = 1; MainGpu = 1; NumCtx = 4096 } },
+        @{ Model='llama31-8b-c8k'; TokensDefault=5000; TokensSafe=3200; TimeoutDefault=270; TimeoutSafe=210; Options=@{ NumGpu = 1; MainGpu = 1; NumCtx = 8192 } },
+        @{ Model='llama31-8b-c16k'; TokensDefault=9000; TokensSafe=6000; TimeoutDefault=360; TimeoutSafe=300; Options=@{ NumGpu = 1; MainGpu = 1; NumCtx = 16384 } },
+        @{ Model='llama31-8b-c32k'; TokensDefault=16000; TokensSafe=9000; TimeoutDefault=480; TimeoutSafe=360; Options=@{ NumGpu = 1; MainGpu = 1; NumCtx = 32768 } }
     );
     'qwen3-balanced' = @(
-        @{ Model='qwen3:8b'; TokensDefault=3000; TokensSafe=2200; TimeoutDefault=200; TimeoutSafe=160; Options=@{ NumGpu = 1; MainGpu = 0; NumCtx = 4096 } },
-        @{ Model='qwen3:8b'; TokensDefault=6000; TokensSafe=4200; TimeoutDefault=280; TimeoutSafe=220; Options=@{ NumGpu = 1; MainGpu = 0; NumCtx = 8192 } },
-        @{ Model='qwen3:8b'; TokensDefault=9000; TokensSafe=6000; TimeoutDefault=360; TimeoutSafe=300; Options=@{ NumGpu = 1; MainGpu = 0; NumCtx = 12000 } }
+        @{ Model='qwen3:8b'; TokensDefault=3000; TokensSafe=2200; TimeoutDefault=200; TimeoutSafe=160; Options=@{ NumGpu = 1; MainGpu = 1; NumCtx = 4096 } },
+        @{ Model='qwen3:8b'; TokensDefault=6000; TokensSafe=4200; TimeoutDefault=280; TimeoutSafe=220; Options=@{ NumGpu = 1; MainGpu = 1; NumCtx = 8192 } },
+        @{ Model='qwen3:8b'; TokensDefault=9000; TokensSafe=6000; TimeoutDefault=360; TimeoutSafe=300; Options=@{ NumGpu = 1; MainGpu = 1; NumCtx = 12000 } }
     );
     'cpu-baseline' = @(
         @{ Model='llama3.1:8b'; TokensDefault=2000; TokensSafe=1500; TimeoutDefault=360; TimeoutSafe=300; Options=@{} }
@@ -120,6 +130,7 @@ if (-not $profiles.ContainsKey($Profile)) {
 
 $useCpuOnly = $CpuOnly.IsPresent
 $gpuInventory = @()
+$preferredGpuIndex = Get-PreferredGpuIndex
 
 if (-not $useCpuOnly) {
     $gpuInventory = Get-GpuInventory
@@ -127,6 +138,12 @@ if (-not $useCpuOnly) {
         Write-Warning 'No NVIDIA GPUs detected. Falling back to CPU-only execution.'
         $useCpuOnly = $true
     } else {
+        $matching = $gpuInventory | Where-Object { $_.Index -eq $preferredGpuIndex }
+        if ($matching.Count -gt 0) {
+            $gpuInventory = $matching
+        } elseif ($preferredGpuIndex -ne $null) {
+            Write-Warning ("Preferred GPU index {0} not detected; using all available GPUs." -f $preferredGpuIndex)
+        }
         $gpuSummary = $gpuInventory | ForEach-Object {
             if ($_.MemoryGiB) {
                 "[{0}] {1} ({2:N1} GiB)" -f $_.Index, $_.Name, $_.MemoryGiB
@@ -314,6 +331,16 @@ if ($WriteReport) {
     }
     Set-Content -Path $reportPath -Value ($md -join "`n") -Encoding UTF8
     Write-Output ("Wrote report: " + $reportPath)
+
+    $evidenceRootPath = Get-RepoEvidenceRoot -RepoRoot $repoRoot
+    $contextDir = Join-Path $evidenceRootPath 'context'
+    if (-not (Test-Path $contextDir)) {
+        New-Item -ItemType Directory -Path $contextDir -Force | Out-Null
+    }
+
+    $copyDestination = Join-Path $contextDir (Split-Path -Path $reportPath -Leaf)
+    Copy-Item -Path $reportPath -Destination $copyDestination -Force
+    Write-Output ("Copied report to " + $copyDestination)
 }
 if ($hadFailures) {
     exit 1

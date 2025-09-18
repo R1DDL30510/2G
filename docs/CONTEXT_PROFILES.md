@@ -16,7 +16,7 @@ The sweep utility now supports multiple labeled profiles so you can continue tes
 
 ## GPU scheduling & cooldown
 
-- The sweep helper now inspects `nvidia-smi` at startup and mirrors every test case across all detected adapters. Results and Markdown exports record which device serviced each run (`Device` column).
+- The sweep helper now inspects `nvidia-smi` at startup, prefers the GPU index defined by `DEFAULT_GPU_INDEX` (default `1` for the RTX 3060), and only fans out across all detected adapters when the preferred device is unavailable. Results and Markdown exports record which device serviced each run (`Device` column).
 - When no CUDA devices are exposed the script logs a warning and automatically falls back to CPU mode—no extra flags required. You can still force CPU-only behaviour with `-CpuOnly` for deterministic baselines.
 - To limit thermal spikes, each GPU hand-off sleeps for `GpuCooldownSec` seconds (default `15`) before the next invocation. Combine this with `-InterRunDelaySec` for additional headroom between prompts, or shorten the cooldown when you are sweeping cooler-running 3B/4B models.
 

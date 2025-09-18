@@ -8,7 +8,17 @@ param(
 
 $ErrorActionPreference = 'Stop'
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$repoRoot = Split-Path -Parent (Split-Path -Parent $scriptRoot)
+$commonCandidates = @(
+    Join-Path $scriptRoot 'common/repo-paths.ps1'),
+    Join-Path (Split-Path -Parent $scriptRoot) 'common/repo-paths.ps1'
+)
+$repoHelperPath = $commonCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+if (-not $repoHelperPath) {
+    throw 'Unable to locate scripts/common/repo-paths.ps1'
+}
+. $repoHelperPath
+
+$repoRoot = Get-RepositoryRoot -StartingPath $scriptRoot
 $composeFile = Join-Path $repoRoot 'infra\compose\docker-compose.yml'
 
 function Ensure-Directory {
@@ -16,31 +26,6 @@ function Ensure-Directory {
     if (-not (Test-Path $Path)) {
         New-Item -Path $Path -ItemType Directory -Force | Out-Null
     }
-}
-
-function Get-EnvValue {
-    param([string]$Key)
-    $envFile = Join-Path $repoRoot '.env'
-    if (-not (Test-Path $envFile)) {
-        return $null
-    }
-    foreach ($line in Get-Content $envFile) {
-        if ($line -match "^\s*$([regex]::Escape($Key))=(.+)$") {
-            return $Matches[1]
-        }
-    }
-    return $null
-}
-
-function Resolve-PathFromRepo {
-    param([string]$Path)
-    if ([string]::IsNullOrWhiteSpace($Path)) {
-        return $null
-    }
-    if ([System.IO.Path]::IsPathRooted($Path)) {
-        return $Path
-    }
-    return Join-Path $repoRoot $Path
 }
 
 function Get-OllamaContainerId {
@@ -130,20 +115,20 @@ function Invoke-OllamaJsonRun {
 }
 
 if (-not $Model) {
-    $Model = Get-EnvValue -Key 'OLLAMA_BENCH_MODEL'
+    $Model = Get-RepoEnvValue -RepoRoot $repoRoot -Key 'OLLAMA_BENCH_MODEL'
 }
 if (-not $Model) {
     throw 'Model name not specified and OLLAMA_BENCH_MODEL missing from .env.'
 }
 
 if (-not $PromptPath) {
-    $PromptPath = Get-EnvValue -Key 'OLLAMA_BENCH_PROMPT'
+    $PromptPath = Get-RepoEnvValue -RepoRoot $repoRoot -Key 'OLLAMA_BENCH_PROMPT'
 }
 if (-not $PromptPath) {
     throw 'Prompt path not specified and OLLAMA_BENCH_PROMPT missing from .env.'
 }
 
-$resolvedPromptPath = Resolve-PathFromRepo -Path $PromptPath
+$resolvedPromptPath = Resolve-RepoPath -RepoRoot $repoRoot -Path $PromptPath
 if (-not (Test-Path $resolvedPromptPath)) {
     throw "Prompt file not found at $resolvedPromptPath"
 }
@@ -154,13 +139,13 @@ if ([string]::IsNullOrWhiteSpace($prompt)) {
 }
 
 if (-not $OutputRoot) {
-    $OutputRoot = Get-EnvValue -Key 'EVIDENCE_ROOT'
+    $OutputRoot = Get-RepoEvidenceRoot -RepoRoot $repoRoot
 }
-if (-not $OutputRoot) {
-    $OutputRoot = 'docs/evidence'
+else {
+    $OutputRoot = Resolve-RepoPath -RepoRoot $repoRoot -Path $OutputRoot
 }
 
-$resolvedOutputRoot = Resolve-PathFromRepo -Path $OutputRoot
+$resolvedOutputRoot = $OutputRoot
 Ensure-Directory -Path $resolvedOutputRoot
 $benchRoot = Join-Path $resolvedOutputRoot 'benchmarks'
 Ensure-Directory -Path $benchRoot

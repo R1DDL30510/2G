@@ -12,7 +12,17 @@ $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
-$repoRoot = Split-Path -Parent $scriptRoot
+$commonCandidates = @(
+    Join-Path $scriptRoot 'common/repo-paths.ps1'),
+    Join-Path (Split-Path -Parent $scriptRoot) 'common/repo-paths.ps1'
+)
+$repoHelperPath = $commonCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+if (-not $repoHelperPath) {
+    throw 'Unable to locate scripts/common/repo-paths.ps1'
+}
+. $repoHelperPath
+
+$repoRoot = Get-RepositoryRoot -StartingPath $scriptRoot
 
 function Resolve-Tool {
     param(
@@ -93,12 +103,15 @@ $settings = switch ($Mode) {
 }
 
 if ($settings.Compose -and -not $ArtifactsRoot) {
-    $ArtifactsRoot = 'docs/evidence/precommit'
+    $defaultEvidence = Get-RepoEnvValue -RepoRoot $repoRoot -Key 'EVIDENCE_ROOT'
+    if (-not $defaultEvidence) { $defaultEvidence = './docs/evidence' }
+    $defaultEvidence = Resolve-RepoPath -RepoRoot $repoRoot -Path $defaultEvidence
+    $ArtifactsRoot = Join-Path $defaultEvidence 'precommit'
 }
 
 if ($ArtifactsRoot) {
     if (-not [System.IO.Path]::IsPathRooted($ArtifactsRoot)) {
-        $ArtifactsRoot = Join-Path $repoRoot $ArtifactsRoot
+        $ArtifactsRoot = Resolve-RepoPath -RepoRoot $repoRoot -Path $ArtifactsRoot
     }
     if (-not (Test-Path $ArtifactsRoot)) {
         New-Item -ItemType Directory -Path $ArtifactsRoot | Out-Null

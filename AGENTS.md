@@ -21,7 +21,7 @@
 ## Testing Guidelines
 - Place unit tests under `tests/` beside their implementation peers and stub external integrations.
 - Keep test runs offline and deterministic; capture new fixtures under `tests/fixtures/` when necessary.
-- For integration evidence, run `./scripts/context-sweep.ps1 -Safe -WriteReport` (add `-CpuOnly` when GPUs are unavailable); reports land in `docs/CONTEXT_RESULTS_*.md`.
+- For integration evidence, run `./scripts/context-sweep.ps1 -Safe -WriteReport` (add `-CpuOnly` when GPUs are unavailable); reports land in `docs/CONTEXT_RESULTS_*.md` and are mirrored under `docs/evidence/context/`.
 
 ## Commit & Pull Request Guidelines
 - Use Conventional Commit prefixes such as `feat:`, `fix:`, and `chore:` with clear scopes.

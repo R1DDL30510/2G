@@ -6,7 +6,18 @@
 )
 
 $ErrorActionPreference = 'Stop'
-$repoRoot = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+$scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
+$commonCandidates = @(
+    Join-Path $scriptRoot 'common/repo-paths.ps1'),
+    Join-Path (Split-Path -Parent $scriptRoot) 'common/repo-paths.ps1'
+)
+$repoHelperPath = $commonCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
+if (-not $repoHelperPath) {
+    throw 'Unable to locate scripts/common/repo-paths.ps1'
+}
+. $repoHelperPath
+
+$repoRoot = Get-RepositoryRoot -StartingPath $scriptRoot
 $docsRoot = Join-Path $repoRoot 'docs'
 
 function Invoke-CommandSafely {
@@ -52,31 +63,10 @@ function Ensure-Directory {
     }
 }
 
-function Get-EnvValue {
-    param([string]$Key)
-    $envFile = Join-Path $repoRoot '.env'
-    if (-not (Test-Path $envFile)) {
-        return $null
-    }
-    foreach ($line in Get-Content $envFile) {
-        if ($line -match "^\s*$([regex]::Escape($Key))=(.+)$") {
-            return $Matches[1]
-        }
-    }
-    return $null
-}
-
 function Get-EvidenceRoot {
-    $configured = Get-EnvValue -Key 'EVIDENCE_ROOT'
     $envLocalPath = Join-Path $repoRoot '.env'
     $null = Ensure-EnvEntry -Path $envLocalPath -Key 'CONTEXT_SWEEP_PROFILE' -DefaultValue 'llama31-long' -Comment 'Default context sweep profile (llama31-long, qwen3-balanced, cpu-baseline).' -PromptValue:$PromptSecrets
-    if ($configured) {
-        if ([System.IO.Path]::IsPathRooted($configured)) {
-            return $configured
-        }
-        return Join-Path $repoRoot $configured
-    }
-    return Join-Path $repoRoot 'docs/evidence'
+    return Get-RepoEvidenceRoot -RepoRoot $repoRoot
 }
 
 function New-EvidenceFile {
@@ -336,7 +326,7 @@ function Invoke-HostVerification {
         $lines += '- Compose file missing; skipped validation.'
     }
 
-    $ollamaUrl = Get-EnvValue -Key 'OLLAMA_BASE_URL'
+    $ollamaUrl = Get-RepoEnvValue -RepoRoot $repoRoot -Key 'OLLAMA_BASE_URL'
     if (-not $ollamaUrl) {
         $ollamaUrl = 'http://localhost:11434'
     }
@@ -376,6 +366,9 @@ function Invoke-WorkspaceProvisioning {
     $null = Ensure-EnvEntry -Path $envLocal -Key 'OLLAMA_BENCH_MODEL' -DefaultValue 'llama3.1:8b' -Comment 'Default model targeted by scripts/clean/bench_ollama.ps1.' -PromptValue:$PromptSecrets
     $null = Ensure-EnvEntry -Path $envLocal -Key 'OLLAMA_BENCH_PROMPT' -DefaultValue './docs/prompts/bench-default.txt' -Comment 'Prompt file consumed by bench_ollama.ps1 during latency sampling.' -PromptValue:$PromptSecrets
     $null = Ensure-EnvEntry -Path $envLocal -Key 'EVIDENCE_ROOT' -DefaultValue './docs/evidence' -Comment 'Destination directory for diagnostics artifacts.' -PromptValue:$PromptSecrets
+    $null = Ensure-EnvEntry -Path $envLocal -Key 'OLLAMA_VISIBLE_GPUS' -DefaultValue '1' -Comment 'Default GPU visibility list passed to Ollama containers.' -PromptValue:$PromptSecrets
+    $null = Ensure-EnvEntry -Path $envLocal -Key 'OLLAMA_GPU_ALLOCATION' -DefaultValue 'device=1' -Comment 'Default docker compose --gpus flag value (device indices) for Ollama.' -PromptValue:$PromptSecrets
+    $null = Ensure-EnvEntry -Path $envLocal -Key 'DEFAULT_GPU_INDEX' -DefaultValue '1' -Comment 'Preferred GPU index for GPU-enabled scripts and Modelfiles.' -PromptValue:$PromptSecrets
     $null = Ensure-EnvEntry -Path $envLocal -Key 'CONTEXT_SWEEP_PROFILE' -DefaultValue 'llama31-long' -Comment 'Default context sweep profile (llama31-long, qwen3-balanced, cpu-baseline).' -PromptValue:$PromptSecrets
 
     foreach ($directory in @('data', 'models')) {
