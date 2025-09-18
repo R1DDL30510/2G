@@ -270,6 +270,8 @@ function Invoke-EnvironmentReport {
         $reportLines += "- **$($probe.Name)**: $status"
     }
 
+
+    $failedMandatory = $probes | Where-Object { $_.Mandatory -and -not $_.Success }
     $reportLines += ''
     $reportLines += '## GPU Inventory'
     $reportLines += ''
@@ -283,6 +285,11 @@ function Invoke-EnvironmentReport {
 
     $evidencePath = New-EvidenceFile -Category 'environment' -Prefix 'environment-report' -Content $reportLines
     Write-Output "Archived detailed report under $evidencePath"
+
+    if ($failedMandatory -and $failedMandatory.Count -gt 0) {
+        $missing = $failedMandatory | ForEach-Object { $_.Name }
+        throw ("Missing required tooling: {0}" -f ($missing -join ', '))
+    }
 }
 
 function Invoke-GpuEvaluation {
@@ -401,6 +408,10 @@ function Invoke-CaptureState {
     $scriptPath = Join-Path $repoRoot 'scripts/clean/capture_state.ps1'
     if (Test-Path $scriptPath) {
         & $scriptPath
+        $exitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
+        if ($exitCode -ne 0) {
+            throw "capture_state.ps1 failed with exit code $exitCode"
+        }
     }
     else {
         Write-Warning 'capture_state.ps1 not found under scripts/clean.'
@@ -411,6 +422,10 @@ function Invoke-Bench {
     $scriptPath = Join-Path $repoRoot 'scripts/clean/bench_ollama.ps1'
     if (Test-Path $scriptPath) {
         & $scriptPath
+        $exitCode = if ($null -eq $LASTEXITCODE) { 0 } else { [int]$LASTEXITCODE }
+        if ($exitCode -ne 0) {
+            throw "bench_ollama.ps1 failed with exit code $exitCode"
+        }
     }
     else {
         Write-Warning 'bench_ollama.ps1 not found under scripts/clean.'

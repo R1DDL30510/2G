@@ -201,6 +201,7 @@ if ($settings.Compose) {
     finally {
         Invoke-Step "docker compose down" {
             & docker compose @composeArgs down -v
+            if ($LASTEXITCODE -ne 0) { throw "docker compose down failed with exit code $LASTEXITCODE" }
         } -Always
     }
 }
