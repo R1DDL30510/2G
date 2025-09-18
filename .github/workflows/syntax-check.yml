@@ -1,0 +1,44 @@
+name: syntax-check
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  lint:
+    name: Validate repository syntax
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install test dependencies
+        run: pip install -r requirements-dev.txt
+
+      - name: Compile Python sources
+        run: python -m compileall tests
+
+      - name: Run fast pytest suite
+        run: pytest --maxfail=1 --disable-warnings -q
+
+      - name: Parse PowerShell scripts for syntax errors
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $hasErrors = $false
+          Get-ChildItem -Path scripts -Filter *.ps1 -File -Recurse | ForEach-Object {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile($_.FullName, [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors -and $errors.Count -gt 0) {
+              Write-Error "Syntax errors detected in $($_.FullName):"
+              foreach ($err in $errors) { Write-Error "  $($err.Message)" }
+              $hasErrors = $true
+            }
+          }
+          if ($hasErrors) { exit 1 }
