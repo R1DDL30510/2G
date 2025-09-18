@@ -9,9 +9,7 @@ services:
       - ../../modelfiles:/modelfiles:ro
     environment:
       - OLLAMA_HOST=0.0.0.0
-      - NVIDIA_VISIBLE_DEVICES=all
-      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
-    gpus: all
+      - OLLAMA_USE_CPU=${OLLAMA_USE_CPU:-true}
 
   open-webui:
     image: ghcr.io/open-webui/open-webui:v0.3.7

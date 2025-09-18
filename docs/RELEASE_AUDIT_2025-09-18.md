@@ -14,7 +14,7 @@
 ## Repository Inventory Snapshot
 | Area | Key Assets | Notes |
 |------|------------|-------|
-| Container orchestration | `infra/compose/docker-compose.yml`, `infra/compose/docker-compose.ci.yml` | Production file pins GPU-enabled images while CI overlay forces CPU mode for portability. |
+| Container orchestration | `infra/compose/docker-compose.yml`, `infra/compose/docker-compose.gpu.yml`, `infra/compose/docker-compose.ci.yml` | Base manifest defaults to CPU, GPU overlay reintroduces NVIDIA requirements, and CI overlay locks execution to CPU-only runners. |
 | Automation scripts | `scripts/compose.ps1`, `scripts/bootstrap.ps1`, `scripts/context-sweep.ps1`, `scripts/model.ps1`, `scripts/clean/*` | Compose lifecycle, environment bootstrapping, context sweeps, and telemetry capture are all scripted in PowerShell. |
 | Model definitions | `modelfiles/llama31-8b-*.Modelfile` | Long-context variants and a GPU-tuned profile inherit from `llama3.1:8b`. |
 | Tests | `tests/config/test_env_example.py`, `tests/infra/test_docker_compose.py`, `tests/modelfiles/test_modelfiles.py`, `tests/pester/scripts.Tests.ps1` | Smoke assertions cover `.env.example`, Compose manifests, Modelfiles, and script switches. |

@@ -9,7 +9,7 @@
 ## Available Tooling
 | Area | Status | Reference |
 |------|--------|-----------|
-| Compose lifecycle | PowerShell wrapper handles `up`, `down`, `restart`, and `logs`; CI consumes `docker-compose.ci.yml` to coerce CPU mode. | `scripts/compose.ps1`, `infra/compose/docker-compose.ci.yml` |
+| Compose lifecycle | PowerShell wrapper handles `up`, `down`, `restart`, and `logs`; layer `docker-compose.gpu.yml` for CUDA runs while CI consumes `docker-compose.ci.yml` to force CPU mode. | `scripts/compose.ps1`, `infra/compose/docker-compose.gpu.yml`, `infra/compose/docker-compose.ci.yml` |
 | Model management | `scripts/model.ps1` covers listing/pulling/creating models inside the container, with `-MainGpu` overrides for the GPU Modelfile. | `scripts/model.ps1` |
 | Evaluation | `scripts/context-sweep.ps1` + `scripts/eval-context.ps1` support profile-driven sweeps (`llama31-long`, `qwen3-balanced`, `cpu-baseline`), safe mode throttling, CPU-only runs, and Markdown reports. | `scripts/context-sweep.ps1`, `scripts/eval-context.ps1`, `docs/CONTEXT_PROFILES.md` |
 | Benchmarking & evidence | Benchmarks now run through `docker exec` (`scripts/clean/bench_ollama.ps1`); `scripts/clean/capture_state.ps1` snapshots host telemetry. CI persists outputs under `docs/evidence/`. | `scripts/clean/bench_ollama.ps1`, `scripts/clean/capture_state.ps1` |

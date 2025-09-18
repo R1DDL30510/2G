@@ -1,8 +1,7 @@
-﻿services:
+services:
   ollama:
-    gpus: null
     environment:
       - OLLAMA_USE_CPU=true
+      - OLLAMA_VISIBLE_GPUS=void
       - NVIDIA_VISIBLE_DEVICES=void
       - NVIDIA_DRIVER_CAPABILITIES=
-

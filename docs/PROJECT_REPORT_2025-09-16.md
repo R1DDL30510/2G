@@ -16,7 +16,7 @@
 | Qdrant | `qdrant/qdrant:v1.15.4` | Vector database backing RAG workflows. | `data/qdrant/` volume for collections. |
 
 ### Orchestration & Configuration
-- `infra/compose/docker-compose.yml` pins the stack to the images above, enables GPU access for Ollama (`gpus: all`, `NVIDIA_VISIBLE_DEVICES=all`), and forwards default ports via `.env` overrides.【F:infra/compose/docker-compose.yml†L1-L33】
+- `infra/compose/docker-compose.yml` pins the stack to the images above, forwards default ports via `.env` overrides, and now defaults Ollama to CPU mode for portability; `infra/compose/docker-compose.gpu.yml` layers NVIDIA variables and a GPU request when CUDA hardware is available.【F:infra/compose/docker-compose.yml†L1-L33】【F:infra/compose/docker-compose.gpu.yml†L1-L6】
 - Environment defaults ship in `.env.example`; `scripts/bootstrap.ps1` copies them into `.env` and prepares `data/` and `models/` directories on first run.【F:.env.example†L1-L11】【F:scripts/bootstrap.ps1†L1-L44】
 - Persistent assets are git-ignored to keep the repository lightweight while preserving local state between compose cycles.
 
