@@ -1,4 +1,4 @@
-﻿param(
+param(
     [string]$Model,
     [string]$PromptPath,
     [int]$Iterations = 3,
@@ -61,58 +61,43 @@ function Invoke-OllamaJsonRun {
         [switch]$PersistArtifacts
     )
 
-    $containerId = Get-OllamaContainerId
+    $uri = 'http://localhost:11434/api/generate'
+    $payload = @{ model = $ModelName; prompt = $Prompt; stream = $false }
+    $body = $payload | ConvertTo-Json -Depth 6
 
-    $psi = New-Object System.Diagnostics.ProcessStartInfo
-    $psi.FileName = 'docker'
-    $psi.Arguments = "exec -i -T $containerId ollama run $ModelName --json"
-    $psi.RedirectStandardInput = $true
-    $psi.RedirectStandardOutput = $true
-    $psi.RedirectStandardError = $true
-    $psi.UseShellExecute = $false
-    $psi.CreateNoWindow = $true
-
-    $process = New-Object System.Diagnostics.Process
-    $process.StartInfo = $psi
-
-    try {
-        $process.Start() | Out-Null
-    }
-    catch {
-        throw "Failed to execute docker exec for Ollama: $($_.Exception.Message)"
-    }
+    $stdout = ''
+    $stderr = ''
+    $lastObj = $null
+    $responses = @()
+    $exitCode = 0
 
     $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-    $process.StandardInput.Write($Prompt)
-    $process.StandardInput.Close()
-
-    $stdout = $process.StandardOutput.ReadToEnd()
-    $stderr = $process.StandardError.ReadToEnd()
-    $process.WaitForExit()
+    try {
+        $response = Invoke-WebRequest -Uri $uri -Method POST -ContentType 'application/json' -Body $body -UseBasicParsing -TimeoutSec 600
+        $stdout = ($response.Content).Trim()
+    }
+    catch {
+        $stderr = $_.Exception.Message
+        $exitCode = -1
+    }
     $stopwatch.Stop()
 
-    $jsonLines = @()
-    foreach ($line in $stdout -split "`n") {
-        $trimmed = $line.Trim()
-        if ($trimmed) { $jsonLines += $trimmed }
-    }
-
-    $responses = @()
-    $lastObj = $null
-    foreach ($line in $jsonLines) {
+    if ($stdout) {
         try {
-            $obj = $line | ConvertFrom-Json
+            $lastObj = $stdout | ConvertFrom-Json
         }
         catch {
-            continue
+            $stderr = "Failed to parse Ollama response as JSON: $stdout"
+            $exitCode = -1
         }
-        if ($obj.response) { $responses += $obj.response }
-        $lastObj = $obj
+        if ($lastObj -and $lastObj.response) {
+            $responses += $lastObj.response
+        }
     }
 
     if ($PersistArtifacts) {
         $jsonPath = Join-Path $OutputDirectory ("iteration-$IterationIndex.jsonl")
-        Set-Content -Path $jsonPath -Value ($jsonLines -join "`n") -Encoding UTF8
+        Set-Content -Path $jsonPath -Value $stdout -Encoding UTF8
         if ($stderr) {
             $errPath = Join-Path $OutputDirectory ("iteration-$IterationIndex.stderr.txt")
             Set-Content -Path $errPath -Value $stderr -Encoding UTF8
@@ -131,7 +116,7 @@ function Invoke-OllamaJsonRun {
 
     return [pscustomobject]@{
         Iteration = $IterationIndex
-        ExitCode = $process.ExitCode
+        ExitCode = $exitCode
         WallMs = $wallMs
         ResponseLength = ($responses -join '').Length
         EvalCount = $evalCount
@@ -266,3 +251,4 @@ $metadataPath = Join-Path $runDir 'summary.json'
 $metadata | ConvertTo-Json -Depth 4 | Set-Content -Path $metadataPath -Encoding UTF8
 
 Write-Output "Benchmark artifacts saved to $runDir"
+

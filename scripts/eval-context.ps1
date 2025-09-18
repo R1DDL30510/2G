@@ -1,4 +1,4 @@
-param(
+﻿param(
     [string]$Model = 'llama31-8b-c8k',
     [int]$TokensTarget = 6000,
     [int]$Markers = 6,
@@ -66,6 +66,18 @@ if (-not $out) {
 
 $answer = $out.response.Trim()
 $expected = ($keys | Where-Object { $_.i -eq $askIndex }).key
-$ok = ($answer -eq $expected)
 
-Write-Output ("Model: {0}  OK: {1}  Latency(s): {2:N1}  Asked: S{3}  Expected: {4}  Got: {5}" -f $Model,$ok,$elapsed,$askIndex,$expected,$answer)
+$normalized = $answer.Trim()
+if ($normalized.StartsWith('<' ) -and $normalized.EndsWith('>') -and $normalized.Length -gt 2) {
+    $normalized = $normalized.Substring(1, $normalized.Length - 2).Trim()
+}
+
+$displayAnswer = $normalized
+if ($normalized -ne $answer) {
+    $displayAnswer = $normalized + " (raw: " + $answer + ")"
+}
+
+$ok = ($normalized -eq $expected)
+
+Write-Output ("Model: {0}  OK: {1}  Latency(s): {2:N1}  Asked: S{3}  Expected: {4}  Got: {5}" -f $Model,$ok,$elapsed,$askIndex,$expected,$displayAnswer)
+
