@@ -11,11 +11,11 @@ Optional: Python 3.10+, Node.js LTS, PowerShell 7 for scripts.
 
 ## Quickstart
 1. Initialize the workspace: `./scripts/bootstrap.ps1 -PromptSecrets` (creates `.env`, `data/`, and `models/`, and lets you confirm CLI keys interactively). Running `./scripts/bootstrap.ps1` without switches now opens an interactive menu so you can trigger health checks and benchmarks from one place.
-2. Adjust `.env` if you need different ports or storage paths. Benchmark defaults (model, prompt, evidence directory) are stored in `.env` under the *Diagnostics and benchmarking* section. The template also seeds GPU defaults (`OLLAMA_VISIBLE_GPUS`, `OLLAMA_GPU_ALLOCATION`, `DEFAULT_GPU_INDEX`) so Ollama and helper scripts target GPU index 1 by default alongside `LOG_FILE=./logs/stack.log`, keeping compose and script logs consolidated under `./logs/`.
+2. Adjust `.env` if you need different ports or storage paths. Benchmark defaults (model, prompt, evidence directory) are stored in `.env` under the *Diagnostics and benchmarking* section. The template also seeds GPU defaults (`OLLAMA_VISIBLE_GPUS`, `OLLAMA_GPU_ALLOCATION`, `DEFAULT_GPU_INDEX`) so Ollama exposes all detected adapters by default while helper scripts continue to honour the preferred index alongside `LOG_FILE=./logs/stack.log`, keeping compose and script logs consolidated under `./logs/`.
 3. Start the stack: `./scripts/compose.ps1 up` (PowerShell).
 4. Open WebUI: http://localhost:3000 (connects to local Ollama at http://localhost:11434).
 
-GPU hosts should layer the GPU overlay when starting the stack directly with Docker Compose: `docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.gpu.yml up -d`. The base file now defaults Ollama to CPU mode so CI and non-NVIDIA machines can boot the stack without errors; the overlay re-enables CUDA, pins GPU index 1 via `OLLAMA_VISIBLE_GPUS`/`OLLAMA_GPU_ALLOCATION`, and honours `DEFAULT_GPU_INDEX` for helper scripts so you can redirect workloads to a different adapter when required.
+GPU hosts should layer the GPU overlay when starting the stack directly with Docker Compose: `docker compose -f infra/compose/docker-compose.yml -f infra/compose/docker-compose.gpu.yml up -d`. The base file now defaults Ollama to CPU mode so CI and non-NVIDIA machines can boot the stack without errors; the overlay re-enables CUDA, exposes all GPUs by default via `OLLAMA_VISIBLE_GPUS`/`OLLAMA_GPU_ALLOCATION`, and still honours `DEFAULT_GPU_INDEX` for helper scripts so you can redirect workloads to a different adapter when required.
 
 For automation pipelines that must avoid prompts, call `./scripts/bootstrap.ps1 -NoMenu` to skip the interactive menu once provisioning is complete.
 

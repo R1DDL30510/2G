@@ -59,7 +59,10 @@ def test_ports_are_numeric() -> None:
 def test_gpu_defaults_are_configured() -> None:
     env = load_env()
     assert env["OLLAMA_VISIBLE_GPUS"], "OLLAMA_VISIBLE_GPUS should not be empty"
-    assert env["OLLAMA_GPU_ALLOCATION"].startswith("device="), "OLLAMA_GPU_ALLOCATION should reference a specific device"
+    allocation = env["OLLAMA_GPU_ALLOCATION"]
+    assert allocation in {"all", "automatic"} or allocation.startswith(
+        "device="
+    ), "OLLAMA_GPU_ALLOCATION should reference a valid GPU selector"
     assert env["DEFAULT_GPU_INDEX"].isdigit(), "DEFAULT_GPU_INDEX should be numeric"
 
 

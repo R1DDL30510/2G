@@ -13,7 +13,7 @@ Set-StrictMode -Version Latest
 
 $scriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Path
 $commonCandidates = @(
-    Join-Path $scriptRoot 'common/repo-paths.ps1'),
+    Join-Path $scriptRoot 'common/repo-paths.ps1'
     Join-Path (Split-Path -Parent $scriptRoot) 'common/repo-paths.ps1'
 )
 $repoHelperPath = $commonCandidates | Where-Object { Test-Path $_ } | Select-Object -First 1
