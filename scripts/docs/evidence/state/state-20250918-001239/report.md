@@ -9,7 +9,7 @@
 
 ## Ollama
 
-- Version: ollama version is 0.3.14
+- Version: ollama version is 0.3.11
 Warning: client version is 0.11.11
 - Model inventory captured at C:\Users\akrin\OneDrive\Desktop\2\scripts\docs\evidence\state\state-20250918-001239\ollama-list.txt
 

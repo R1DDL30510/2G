@@ -3,7 +3,7 @@
 This repository provisions a local, open-source AI stack with Docker Compose. Everything runs on your workstation with no external cloud services required.
 
 ## Stack Overview
-- Compose stack pins `ollama/ollama:0.3.14`, `ghcr.io/open-webui/open-webui:v0.3.7`, and `qdrant/qdrant:v1.15.4` for deterministic start-ups.
+- Compose stack pins `ollama/ollama:0.3.11`, `ghcr.io/open-webui/open-webui:v0.3.7`, and `qdrant/qdrant:v1.15.4` for deterministic start-ups.
 - Ollama hosts and serves local LLMs, Open WebUI provides the chat UI, and Qdrant offers vector search for retrieval-augmented workflows.
 
 ## Directory Layout

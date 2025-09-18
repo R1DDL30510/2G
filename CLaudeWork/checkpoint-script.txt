@@ -65,7 +65,7 @@ function Export-DockerImages($checkpoint) {
     New-Item -Path $imageDir -ItemType Directory -Force | Out-Null
     
     $images = @(
-        'ollama/ollama:0.3.14',
+        'ollama/ollama:0.3.11',
         'ghcr.io/open-webui/open-webui:v0.3.7', 
         'qdrant/qdrant:v1.15.4'
     )

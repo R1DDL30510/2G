@@ -328,7 +328,7 @@ function Invoke-HostVerification {
 
     $checks += [pscustomobject]@{ Name = 'Docker daemon'; Result = Invoke-CommandSafely -Command 'docker' -Arguments @('info', '--format', '{{.ServerVersion}}'); Description = 'Verifies Docker engine availability.' }
 
-    $composeFile = Join-Path $repoRoot 'infra\compose\docker-compose.yml'
+    $composeFile = [System.IO.Path]::Combine($repoRoot, 'infra', 'compose', 'docker-compose.yml')
     if (Test-Path $composeFile) {
         $checks += [pscustomobject]@{ Name = 'Compose file validation'; Result = Invoke-CommandSafely -Command 'docker' -Arguments @('compose', '-f', $composeFile, 'config'); Description = 'Ensures docker-compose.yml parses.' }
     }
