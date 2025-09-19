@@ -44,6 +44,14 @@ def test_bootstrap_seeds_runtime_overrides() -> None:
         assert expected in content, f"bootstrap should ensure {key} entry"
 
 
+def test_bootstrap_normalises_repo_relative_directories() -> None:
+    content = read_text("scripts/bootstrap.ps1")
+    assert "function Resolve-RepoPath" in content
+    assert "Resolve-RepoPath -Path $modelsDirValue" in content
+    assert "Resolve-RepoPath -Path $logDirValue" in content
+    assert "[System.IO.Path]::GetDirectoryName($logFileValue)" in content
+
+
 def test_context_sweep_lists_builtin_profiles() -> None:
     content = read_text("scripts/context-sweep.ps1")
     for profile in ("baseline-cpu",):
