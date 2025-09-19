@@ -1,48 +1,52 @@
 # Local AI Stack (Modular Core)
 
-This repository ships a minimal Docker Compose stack for running a single Ollama instance. The PowerShell helpers keep the interface consistent across platforms, while the stack stays intentionally small so you can layer extra services only when they are required.
+The repository packages a single-service Ollama stack that favours clarity over breadth. Every component is modular: add overlays or extra services only when you are ready, otherwise the baseline stays lightweight and easy to reason about.
 
-## Prerequisites
-- Windows 11, macOS, or Linux with Docker Engine/Desktop
-- PowerShell 7 (`pwsh`) for the helper scripts
-- Python 3.11 for the validation suite
-- Optional: Node.js LTS if you work with the Codex CLI utilities
+## Snapshot of the stack
+
+| Area | Status | Notes |
+| --- | --- | --- |
+| Compose baseline | ✅ Stable | `infra/compose/docker-compose.yml` starts one Ollama container with CPU defaults. No images are pinned so tags stay modular. |
+| Helper scripts | ✅ Stable | PowerShell entrypoints in `scripts/` wrap Docker and model actions while surfacing errors consistently. |
+| GPU overlay | ⚠️ Experimental | `infra/compose/docker-compose.gpu.yml` assumes NVIDIA-capable hosts; keep it optional. |
+| Context sweep | ⚠️ Host-dependent | `scripts/context-sweep.ps1` supports plan-only runs everywhere, but full sweeps depend on local resources. |
+| Additional services | 🧩 Modular | Layer new compose files under `infra/compose/` and ship matching tests before promoting them. |
+
+See `docs/STATE_VERIFICATION.md` for the canonical checklist and current guardrail results.
+
+## Dependencies at a glance
+
+- **Host prerequisites** – Docker Engine/Desktop, PowerShell 7 (`pwsh`), and Python 3.11. Node.js LTS is only required when using the optional CLI helpers.
+- **Environment configuration** – `.env.example` documents the runtime variables. Copy it to `.env` (or run `./scripts/bootstrap.ps1 -PromptSecrets`) before starting the stack.
+- **Python tooling** – all requirements are centralised under `requirements/python/`. Install `requirements/python/dev.txt` locally; CI pulls from the same base list via `requirements/python/ci.txt`.
+
+The folder `requirements/README.md` lists every dependency surface, including PowerShell and Node.js guidance, so the workflows and documentation stay in sync.
 
 ## Quickstart
-1. **Bootstrap the workspace** – `./scripts/bootstrap.ps1 -PromptSecrets` seeds `.env`, ensures the `models/` folder exists, and runs the basic host checks.
-2. **Review `.env`** – adjust `OLLAMA_IMAGE`, `OLLAMA_PORT`, or `MODELS_DIR` as required. The compose helper resolves relative paths against the repository root automatically.
-3. **Start the stack** – `./scripts/compose.ps1 up` brings up the Ollama service using the repository `.env`. Add overlays with `-File` when experimenting:
-   ```powershell
-   ./scripts/compose.ps1 up -File docker-compose.gpu.yml
-   ```
-   Use `down`, `restart`, or `logs` for the other lifecycle operations.
-4. **Interact with Ollama** – the API is available at `http://localhost:11434` by default. Use `./scripts/model.ps1` to list, pull, or create models inside the container.
+1. **Bootstrap** – `./scripts/bootstrap.ps1 -PromptSecrets` ensures `.env` exists, creates `models/`, and runs basic host checks.
+2. **Review configuration** – tweak `OLLAMA_IMAGE`, `OLLAMA_PORT`, or `MODELS_DIR` in `.env`. The compose helper resolves relative paths against the repository root automatically.
+3. **Start the baseline** – `./scripts/compose.ps1 up` launches the Ollama container with CPU defaults. Append `-File docker-compose.gpu.yml` only when you intentionally opt into the GPU overlay.
+4. **Work with models** – the API lives at `http://localhost:11434`. Use `./scripts/model.ps1` to list, pull, or create the curated `modelfiles/baseline.Modelfile` inside the container.
 
-## Configuration
-- `.env` controls the runtime image (`OLLAMA_IMAGE`), listening port (`OLLAMA_PORT`), storage paths, and diagnostics defaults. If the file is missing the compose helper falls back to `.env.example` but exits early when neither exists so CI can flag the configuration error.
-- `infra/compose/docker-compose.yml` defines the single-service baseline. Images are intentionally unpinned and can be overridden via environment variables to keep deployments modular.
-- `infra/compose/docker-compose.gpu.yml` adds GPU scheduling hints for the Ollama container; layer it only on hosts with CUDA-capable hardware.
-- `modelfiles/baseline.Modelfile` is the curated default. Extend the folder with additional Modelfiles when experimenting with alternative prompts or parameters.
+## Verification loop
 
-## Services
-| Service | Image | Notes |
-|---------|-------|-------|
-| `ollama` | `${OLLAMA_IMAGE:-ollama/ollama}` | CPU by default; enable GPU scheduling with the optional overlay. |
+Run these guardrails after changing infrastructure, scripts, or modelfiles:
 
-## State Verification
-The `docs/STATE_VERIFICATION.md` checklist summarises what is stable today and what remains experimental. Review it after changes to confirm the following guardrails stay green:
-- `pytest` – validates the compose manifest, `.env.example`, and Modelfiles without contacting external services.
-- `pwsh -File tests/pester/scripts.Tests.ps1` – mirrors the PowerShell metadata checks for contributors without Python.
-- `./scripts/context-sweep.ps1 -Safe -CpuOnly -PlanOnly -WriteReport` – optional plan-only sweep to confirm the diagnostics pipeline still runs without large model downloads.
+```powershell
+python -m pip install -r requirements/python/dev.txt
+pytest
 
-## Continuous Integration
-Two GitHub Actions workflows keep the stack reproducible:
-- **syntax-check.yml** sets up Python, compiles the test tree, and runs the fast pytest suite. It also parses all PowerShell scripts for syntax errors.
-- **smoke-tests.yml** installs Python tooling, hydrates `.env` from the example template, runs pytest and Pester, boots the minimal compose stack with CPU overrides, waits for the Ollama health endpoint, records a plan-only context sweep, and captures the host state snapshot.
+pwsh -File tests/pester/scripts.Tests.ps1
 
-## Development Notes
-- Use `./scripts/model.ps1 create-all` to recreate every Modelfile inside the running Ollama container.
-- Evidence and benchmark outputs land in `docs/evidence/` according to the paths from `.env`.
-- Keep tests under `tests/` mirrored with their implementation counterparts to stay aligned with the repository structure described in `AGENTS.md`.
+./scripts/context-sweep.ps1 -Safe -CpuOnly -PlanOnly -WriteReport  # optional, plan-only
+```
 
-For a quick situational overview, start with `docs/STATE_VERIFICATION.md` and the latest entries under `docs/evidence/`.
+Record results in `docs/evidence/` when relevant. The workflows in `.github/workflows/` mirror the same sequence so CI stays aligned with local practice.
+
+## Service catalogue
+
+| Service | Default image | Purpose |
+| --- | --- | --- |
+| `ollama` | `${OLLAMA_IMAGE:-ollama/ollama}` | Minimal runtime exposing the Ollama HTTP API with CPU-safe defaults. |
+
+Future services belong in separate compose overlays and should include matching tests before merging. Keep the baseline focused on the single Ollama workload.
