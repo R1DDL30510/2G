@@ -2,27 +2,27 @@ if (-not $PSScriptRoot) {
     throw "PSScriptRoot was not populated; unable to determine repository root."
 }
 
-$repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
+$script:repoRoot = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 
-if (-not $repoRoot) {
+if (-not $script:repoRoot) {
     throw "Unable to resolve repository root from PSScriptRoot: $PSScriptRoot"
 }
 
-if (-not (Test-Path -Path $repoRoot -PathType Container)) {
-    throw "Resolved repository root does not exist: $repoRoot"
+if (-not (Test-Path -Path $script:repoRoot -PathType Container)) {
+    throw "Resolved repository root does not exist: $script:repoRoot"
 }
 
-function Get-RequiredFileContent {
+function script:Get-RequiredFileContent {
     param (
         [Parameter(Mandatory = $true)]
         [ValidateNotNullOrEmpty()]
         [string] $RelativePath
     )
 
-    $fullPath = Join-Path -Path $repoRoot -ChildPath $RelativePath
+    $fullPath = Join-Path -Path $script:repoRoot -ChildPath $RelativePath
 
     if (-not $fullPath) {
-        throw "Failed to build a path for '$RelativePath' from repository root '$repoRoot'."
+        throw "Failed to build a path for '$RelativePath' from repository root '$($script:repoRoot)'."
     }
 
     if (-not (Test-Path -LiteralPath $fullPath -PathType Leaf)) {
@@ -79,9 +79,9 @@ Describe 'scripts/bootstrap.ps1' {
 
 Describe 'context evaluation tooling' {
     BeforeAll {
-        $script:sweepPath = Join-Path -Path $repoRoot -ChildPath 'scripts/context-sweep.ps1'
+        $script:sweepPath = Join-Path -Path $script:repoRoot -ChildPath 'scripts/context-sweep.ps1'
         $script:sweepContent = Get-Content -Path $script:sweepPath -Raw
-        $script:evalPath = Join-Path -Path $repoRoot -ChildPath 'scripts/eval-context.ps1'
+        $script:evalPath = Join-Path -Path $script:repoRoot -ChildPath 'scripts/eval-context.ps1'
         $script:evalContent = Get-Content -Path $script:evalPath -Raw
     }
 
@@ -100,7 +100,7 @@ Describe 'context evaluation tooling' {
 
 Describe 'scripts/clean/prune_evidence.ps1' {
     BeforeAll {
-        $script:prunePath = Join-Path -Path $repoRoot -ChildPath 'scripts/clean/prune_evidence.ps1'
+        $script:prunePath = Join-Path -Path $script:repoRoot -ChildPath 'scripts/clean/prune_evidence.ps1'
         $script:pruneContent = Get-Content -Path $script:prunePath -Raw
     }
 
