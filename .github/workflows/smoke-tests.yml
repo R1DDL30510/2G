@@ -65,3 +65,14 @@ jobs:
 
       - name: Assert .env matches template
         run: diff <(grep -v '^#' .env.example | sort) <(grep -v '^#' .env | sort)
+
+  validate-stack:
+    name: Validate compose stack
+    runs-on: ubuntu-latest
+    needs: smoke
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Run stack validation script
+        run: ./scripts/validate-stack.sh

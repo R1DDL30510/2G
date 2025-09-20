@@ -29,15 +29,24 @@ def test_context_profile_default_present() -> None:
 def test_env_example_contains_expected_keys() -> None:
     env = load_env()
     expected_keys = {
+        "REGISTRY_NAMESPACE",
+        "STACK_IMAGE_TAG",
         "OLLAMA_IMAGE",
+        "OPENWEBUI_IMAGE",
         "OLLAMA_PORT",
+        "OPENWEBUI_PORT",
         "MODELS_DIR",
         "OLLAMA_API_KEY",
         "OLLAMA_BASE_URL",
+        "OPENWEBUI_BASE_URL",
         "OLLAMA_BENCH_MODEL",
         "OLLAMA_BENCH_PROMPT",
         "EVIDENCE_ROOT",
         "LOG_FILE",
+        "OLLAMA_USE_CPU",
+        "OLLAMA_VISIBLE_GPUS",
+        "OLLAMA_GPU_ALLOCATION",
+        "WEBUI_AUTH",
     }
     missing = expected_keys.difference(env)
     assert not missing, f".env.example is missing keys: {sorted(missing)}"
@@ -45,8 +54,9 @@ def test_env_example_contains_expected_keys() -> None:
 
 def test_ports_are_numeric() -> None:
     env = load_env()
-    value = env["OLLAMA_PORT"]
-    assert value.isdigit(), "OLLAMA_PORT should be a numeric port"
+    for key in ("OLLAMA_PORT", "OPENWEBUI_PORT"):
+        value = env[key]
+        assert value.isdigit(), f"{key} should be a numeric port"
 
 
 def test_prompt_reference_exists() -> None:

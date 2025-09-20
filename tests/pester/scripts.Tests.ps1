@@ -63,7 +63,22 @@ Describe 'scripts/bootstrap.ps1' {
     }
 
     It 'ensures baseline runtime overrides exist in .env' {
-        foreach ($key in @('OLLAMA_IMAGE','OLLAMA_PORT','MODELS_DIR','LOG_FILE')) {
+        $expectedKeys = @(
+            'REGISTRY_NAMESPACE',
+            'STACK_IMAGE_TAG',
+            'OLLAMA_IMAGE',
+            'OPENWEBUI_IMAGE',
+            'OLLAMA_PORT',
+            'OPENWEBUI_PORT',
+            'MODELS_DIR',
+            'OLLAMA_USE_CPU',
+            'OLLAMA_VISIBLE_GPUS',
+            'OLLAMA_GPU_ALLOCATION',
+            'WEBUI_AUTH',
+            'LOG_FILE'
+        )
+
+        foreach ($key in $expectedKeys) {
             $pattern = "Ensure-EnvEntry -Path \$envLocal -Key '$key'"
             ($script:bootstrapContent -match $pattern) | Should -BeTrue
         }

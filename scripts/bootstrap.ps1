@@ -371,15 +371,24 @@ function Invoke-WorkspaceProvisioning {
         Write-Output 'Created .env from .env.example'
     }
 
+    $null = Ensure-EnvEntry -Path $envLocal -Key 'REGISTRY_NAMESPACE' -DefaultValue 'gstack' -Comment 'Container registry namespace used when tagging stack images.' -PromptValue:$PromptSecrets
+    $null = Ensure-EnvEntry -Path $envLocal -Key 'STACK_IMAGE_TAG' -DefaultValue 'local' -Comment 'Tag applied to locally built images before validation or publishing.' -PromptValue:$PromptSecrets
     $null = Ensure-EnvEntry -Path $envLocal -Key 'OLLAMA_IMAGE' -DefaultValue 'ollama/ollama' -Comment 'Base image used by the baseline stack. Override to experiment with alternative tags.' -PromptValue:$PromptSecrets
+    $null = Ensure-EnvEntry -Path $envLocal -Key 'OPENWEBUI_IMAGE' -DefaultValue 'openwebui/open-webui:latest' -Comment 'Pinned OpenWebUI image consumed by the optional web UI service.' -PromptValue:$PromptSecrets
     $null = Ensure-EnvEntry -Path $envLocal -Key 'OLLAMA_PORT' -DefaultValue '11434' -Comment 'Host port forwarded to the Ollama API container.' -PromptValue:$PromptSecrets
+    $null = Ensure-EnvEntry -Path $envLocal -Key 'OPENWEBUI_PORT' -DefaultValue '3000' -Comment 'Host port forwarded to the OpenWebUI interface.' -PromptValue:$PromptSecrets
     $null = Ensure-EnvEntry -Path $envLocal -Key 'MODELS_DIR' -DefaultValue './models' -Comment 'Relative directory used to persist downloaded Ollama models.' -PromptValue:$PromptSecrets
+    $null = Ensure-EnvEntry -Path $envLocal -Key 'OLLAMA_USE_CPU' -DefaultValue 'true' -Comment 'Enable CPU execution when GPUs are unavailable.' -PromptValue:$PromptSecrets
+    $null = Ensure-EnvEntry -Path $envLocal -Key 'OLLAMA_VISIBLE_GPUS' -DefaultValue 'all' -Comment 'GPU selector passed to Ollama when the GPU overlay is enabled.' -PromptValue:$PromptSecrets
+    $null = Ensure-EnvEntry -Path $envLocal -Key 'OLLAMA_GPU_ALLOCATION' -DefaultValue 'all' -Comment 'Docker Compose GPU allocation hint consumed by the GPU overlay.' -PromptValue:$PromptSecrets
     $null = Ensure-EnvEntry -Path $envLocal -Key 'OLLAMA_API_KEY' -DefaultValue 'ollama-local' -Comment 'Dummy key required by Codex CLI workflows when proxying to local Ollama. Replace with a real token if bridging to remote services.' -PromptValue:$PromptSecrets
     $null = Ensure-EnvEntry -Path $envLocal -Key 'OLLAMA_BASE_URL' -DefaultValue 'http://localhost:11434' -Comment 'Base URL for local Ollama API. Used by health checks and benchmarking.' -PromptValue:$PromptSecrets
+    $null = Ensure-EnvEntry -Path $envLocal -Key 'OPENWEBUI_BASE_URL' -DefaultValue 'http://localhost:3000' -Comment 'Base URL for the optional OpenWebUI interface.' -PromptValue:$PromptSecrets
     $null = Ensure-EnvEntry -Path $envLocal -Key 'OLLAMA_BENCH_MODEL' -DefaultValue 'llama3.1' -Comment 'Default model targeted by scripts/clean/bench_ollama.ps1.' -PromptValue:$PromptSecrets
     $null = Ensure-EnvEntry -Path $envLocal -Key 'OLLAMA_BENCH_PROMPT' -DefaultValue './docs/prompts/bench-default.txt' -Comment 'Prompt file consumed by bench_ollama.ps1 during latency sampling.' -PromptValue:$PromptSecrets
     $null = Ensure-EnvEntry -Path $envLocal -Key 'EVIDENCE_ROOT' -DefaultValue './docs/evidence' -Comment 'Destination directory for diagnostics artifacts.' -PromptValue:$PromptSecrets
     $null = Ensure-EnvEntry -Path $envLocal -Key 'CONTEXT_SWEEP_PROFILE' -DefaultValue 'baseline-cpu' -Comment 'Default context sweep profile (baseline-cpu).' -PromptValue:$PromptSecrets
+    $null = Ensure-EnvEntry -Path $envLocal -Key 'WEBUI_AUTH' -DefaultValue 'disabled' -Comment 'OpenWebUI authentication mode (set to username:password to enable basic auth).' -PromptValue:$PromptSecrets
     $null = Ensure-EnvEntry -Path $envLocal -Key 'LOG_FILE' -DefaultValue './logs/stack.log' -Comment 'Relative path for stack diagnostics emitted by helper scripts.' -PromptValue:$PromptSecrets
 
     foreach ($directory in @('data', 'models')) {

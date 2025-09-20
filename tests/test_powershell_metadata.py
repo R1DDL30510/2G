@@ -39,7 +39,20 @@ def test_bootstrap_seeds_context_sweep_profile() -> None:
 
 def test_bootstrap_seeds_runtime_overrides() -> None:
     content = read_text("scripts/bootstrap.ps1")
-    for key in ("OLLAMA_IMAGE", "OLLAMA_PORT", "MODELS_DIR", "LOG_FILE"):
+    for key in (
+        "REGISTRY_NAMESPACE",
+        "STACK_IMAGE_TAG",
+        "OLLAMA_IMAGE",
+        "OPENWEBUI_IMAGE",
+        "OLLAMA_PORT",
+        "OPENWEBUI_PORT",
+        "MODELS_DIR",
+        "OLLAMA_USE_CPU",
+        "OLLAMA_VISIBLE_GPUS",
+        "OLLAMA_GPU_ALLOCATION",
+        "WEBUI_AUTH",
+        "LOG_FILE",
+    ):
         expected = f"Ensure-EnvEntry -Path $envLocal -Key '{key}'"
         assert expected in content, f"bootstrap should ensure {key} entry"
 
