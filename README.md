@@ -13,15 +13,24 @@ This repository ships a minimal Docker Compose stack for running a single Ollama
 2. **Review `.env`** – adjust `OLLAMA_IMAGE`, `OLLAMA_PORT`, or `MODELS_DIR` as required. The compose helper resolves relative paths against the repository root automatically.
 3. **Start the stack** – `./scripts/compose.ps1 up` brings up the Ollama service using the repository `.env`. Add overlays with `-File` when experimenting:
    ```powershell
+   # NVIDIA-enabled host (WSL2/Windows)
    ./scripts/compose.ps1 up -File docker-compose.gpu.yml
+
+   # Host with Open WebUI alongside Ollama
+   ./scripts/compose.ps1 up -File docker-compose.openwebui.yml
+
+   # Host running Automatic1111 with DirectML (requires SD_WEBUI_IMAGE in .env)
+   ./scripts/compose.ps1 up -File docker-compose.automatic1111.directml.yml
    ```
-   Use `down`, `restart`, or `logs` for the other lifecycle operations.
+   Use `down`, `restart`, or `logs` for the other lifecycle operations. Pass `-Context` to target a remote Docker context when coordinating multiple hosts.
 4. **Interact with Ollama** – the API is available at `http://localhost:11434` by default. Use `./scripts/model.ps1` to list, pull, or create models inside the container.
 
 ## Configuration
 - `.env` controls the runtime image (`OLLAMA_IMAGE`), listening port (`OLLAMA_PORT`), storage paths, and diagnostics defaults. If the file is missing the compose helper falls back to `.env.example` but exits early when neither exists so CI can flag the configuration error.
 - `infra/compose/docker-compose.yml` defines the single-service baseline. Images are intentionally unpinned and can be overridden via environment variables to keep deployments modular.
 - `infra/compose/docker-compose.gpu.yml` adds GPU scheduling hints for the Ollama container; layer it only on hosts with CUDA-capable hardware.
+- `infra/compose/docker-compose.openwebui.yml` launches Open WebUI against the running Ollama API to provide a browser frontend.
+- `infra/compose/docker-compose.automatic1111.directml.yml` introduces an Automatic1111 Stable Diffusion container prepared for DirectML acceleration on AMD GPUs. Set `SD_WEBUI_IMAGE` in `.env` to a DirectML-compatible build before using the overlay.
 - `modelfiles/baseline.Modelfile` is the curated default. Extend the folder with additional Modelfiles when experimenting with alternative prompts or parameters.
 
 ## Services
@@ -46,3 +55,5 @@ Two GitHub Actions workflows keep the stack reproducible:
 - Keep tests under `tests/` mirrored with their implementation counterparts to stay aligned with the repository structure described in `AGENTS.md`.
 
 For a quick situational overview, start with `docs/STATE_VERIFICATION.md` and the latest entries under `docs/evidence/`.
+
+Architectural decisions, host roles, and overlay responsibilities are captured in `docs/ARCHITECTURE.md`.

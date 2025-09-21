@@ -21,6 +21,8 @@ def test_compose_script_exposes_expected_actions() -> None:
     assert re.search(r"ValidateSet\('up','down','restart','logs'\)", content)
     assert "--env-file" in content, "compose helper should pass repository env file to docker"
     assert "[string[]]$File" in content, "compose helper should expose overlay parameter"
+    assert "[string]$Context" in content, "compose helper should expose optional Docker context parameter"
+    assert "--context" in content, "compose helper should forward Docker context when provided"
 
 
 def test_bootstrap_supports_prompt_secrets_switch() -> None:

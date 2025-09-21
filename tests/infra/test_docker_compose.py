@@ -8,6 +8,8 @@ from typing import Dict, List
 ROOT = Path(__file__).resolve().parents[2]
 COMPOSE_PATH = ROOT / "infra" / "compose" / "docker-compose.yml"
 GPU_COMPOSE_PATH = ROOT / "infra" / "compose" / "docker-compose.gpu.yml"
+OPENWEBUI_COMPOSE_PATH = ROOT / "infra" / "compose" / "docker-compose.openwebui.yml"
+DIRECTML_COMPOSE_PATH = ROOT / "infra" / "compose" / "docker-compose.automatic1111.directml.yml"
 
 
 def parse_services(path: Path = COMPOSE_PATH) -> Dict[str, Dict[str, object]]:
@@ -73,6 +75,8 @@ def parse_services(path: Path = COMPOSE_PATH) -> Dict[str, Dict[str, object]]:
 
 SERVICES_CACHE = parse_services()
 GPU_SERVICES_CACHE = parse_services(GPU_COMPOSE_PATH)
+OPENWEBUI_SERVICES_CACHE = parse_services(OPENWEBUI_COMPOSE_PATH)
+DIRECTML_SERVICES_CACHE = parse_services(DIRECTML_COMPOSE_PATH)
 
 
 def test_compose_declares_only_ollama_service() -> None:
@@ -122,4 +126,54 @@ def test_gpu_overlay_requests_cuda_resources() -> None:
     }
     for pair in expected_pairs:
         assert pair in environment, f"GPU overlay environment missing {pair}"
+
+
+def test_openwebui_overlay_links_to_ollama() -> None:
+    openwebui = OPENWEBUI_SERVICES_CACHE["openwebui"]
+
+    assert (
+        openwebui.get("image")
+        == "${OPENWEBUI_IMAGE:-ghcr.io/open-webui/open-webui:main}"
+    ), "Open WebUI overlay should expose image override"
+
+    environment: List[str] = openwebui.get("environment", [])  # type: ignore[assignment]
+    assert (
+        "OLLAMA_BASE_URL=${OPENWEBUI_OLLAMA_URL:-http://ollama:11434}" in environment
+    ), "Open WebUI overlay should reference Ollama base URL"
+    assert (
+        "WEBUI_SECRET_KEY=${OPENWEBUI_SECRET_KEY:-changeme}" in environment
+    ), "Open WebUI overlay must allow secret override"
+
+    ports: List[str] = openwebui.get("ports", [])  # type: ignore[assignment]
+    assert any(
+        entry.strip('"') == "${OPENWEBUI_PORT:-3000}:8080" for entry in ports
+    ), "Open WebUI overlay should publish configurable host port"
+
+    depends_on: List[str] = openwebui.get("depends_on", [])  # type: ignore[assignment]
+    assert depends_on == ["ollama"], "Open WebUI overlay must depend on ollama"
+
+
+def test_directml_overlay_requires_image_override() -> None:
+    directml = DIRECTML_SERVICES_CACHE["stable-diffusion"]
+
+    assert directml.get("image") == "${SD_WEBUI_IMAGE:?Set SD_WEBUI_IMAGE in .env to a DirectML-compatible Automatic1111 build}", (
+        "DirectML overlay must require SD_WEBUI_IMAGE override"
+    )
+
+    environment: List[str] = directml.get("environment", [])  # type: ignore[assignment]
+    assert (
+        "COMMANDLINE_ARGS=${SD_WEBUI_COMMANDLINE_ARGS:---use-directml --medvram}" in environment
+    ), "DirectML overlay should expose CLI arguments override"
+
+    ports: List[str] = directml.get("ports", [])  # type: ignore[assignment]
+    assert any(
+        entry.strip('"') == "${SD_WEBUI_PORT:-7860}:7860" for entry in ports
+    ), "DirectML overlay must publish default Stable Diffusion port"
+
+    volumes: List[str] = directml.get("volumes", [])  # type: ignore[assignment]
+    expected_volumes = {
+        "../../${SD_WEBUI_MODELS_DIR:-models/stable-diffusion}:/data/models",
+        "../../${SD_WEBUI_CONFIG_DIR:-configs/stable-diffusion}:/data/config",
+    }
+    assert expected_volumes.issubset(set(volumes)), "DirectML overlay must mount model and config directories"
 

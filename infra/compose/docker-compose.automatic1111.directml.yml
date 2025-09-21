@@ -1,0 +1,11 @@
+services:
+  stable-diffusion:
+    image: ${SD_WEBUI_IMAGE:?Set SD_WEBUI_IMAGE in .env to a DirectML-compatible Automatic1111 build}
+    restart: unless-stopped
+    environment:
+      - COMMANDLINE_ARGS=${SD_WEBUI_COMMANDLINE_ARGS:---use-directml --medvram}
+    ports:
+      - "${SD_WEBUI_PORT:-7860}:7860"
+    volumes:
+      - ../../${SD_WEBUI_MODELS_DIR:-models/stable-diffusion}:/data/models
+      - ../../${SD_WEBUI_CONFIG_DIR:-configs/stable-diffusion}:/data/config

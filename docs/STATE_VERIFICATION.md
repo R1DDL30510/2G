@@ -10,6 +10,8 @@ This checklist highlights the current stability of the minimal stack and the che
 
 ## Experimental or Host-Dependent
 - **GPU overlay** – `infra/compose/docker-compose.gpu.yml` depends on NVIDIA container support. Treat failures as host-specific until validated on real hardware.
+- **Open WebUI overlay** – `infra/compose/docker-compose.openwebui.yml` couples a UI container to the Ollama API. It expects Ollama to stay reachable on the same Docker network (default bridge) and inherits GPU behaviour from the host.
+- **Automatic1111 DirectML overlay** – `infra/compose/docker-compose.automatic1111.directml.yml` targets AMD GPUs via DirectML. Set `SD_WEBUI_IMAGE` to a compatible image and validate locally before promoting changes.
 - **Context sweeps** – `./scripts/context-sweep.ps1` supports plan-only runs in CI. Full executions still require local model downloads and sufficient CPU/GPU capacity.
 - **Additional services** – any service layered on top of the minimal stack must ship its own verification steps.
 
@@ -32,7 +34,7 @@ Start it alongside the baseline only when required:
 ./scripts/compose.ps1 up -File docker-compose.qdrant.yml
 ```
 
-Ship complementary guardrails (pytest or Pester checks) with any new overlay so CI can detect drift early.
+Ship complementary guardrails (pytest or Pester checks) with any new overlay so CI can detect drift early. `tests/infra/test_docker_compose.py` now validates the Ollama, Open WebUI, and Automatic1111 overlays at parse time.
 
 ## Verification Steps
 Run these checks after changing infrastructure, scripts, or documentation referenced by the stack:

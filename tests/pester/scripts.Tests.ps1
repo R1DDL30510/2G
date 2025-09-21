@@ -44,6 +44,8 @@ Describe 'scripts/compose.ps1' {
     It 'bubbles repository env file and overlays to docker compose' {
         ($script:composeContent -match '--env-file') | Should -BeTrue
         ($script:composeContent -match '\[string\[\]\]\$File') | Should -BeTrue
+        ($script:composeContent -match '\[string\]\$Context') | Should -BeTrue
+        ($script:composeContent -match '--context') | Should -BeTrue
     }
 }
 

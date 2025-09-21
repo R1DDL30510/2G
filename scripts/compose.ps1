@@ -1,7 +1,8 @@
 param(
     [ValidateSet('up','down','restart','logs')]
     [string]$Action = 'up',
-    [string[]]$File = @()
+    [string[]]$File = @(),
+    [string]$Context
 )
 
 $ErrorActionPreference = 'Stop'
@@ -47,7 +48,13 @@ $exitCode = 0
 
 Push-Location $repoRoot
 try {
-    $composeArgs = @('compose', '--env-file', $envFile, '-f', $composeFile)
+    $composeArgs = @('compose')
+
+    if ($Context) {
+        $composeArgs += @('--context', $Context)
+    }
+
+    $composeArgs += @('--env-file', $envFile, '-f', $composeFile)
 
     foreach ($overlay in $File) {
         $resolved = Resolve-ComposePath -Path $overlay
