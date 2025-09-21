@@ -32,12 +32,22 @@ def test_env_example_contains_expected_keys() -> None:
         "OLLAMA_IMAGE",
         "OLLAMA_PORT",
         "MODELS_DIR",
+        "OPENWEBUI_CONFIG_DIR",
+        "SD_WEBUI_MODELS_DIR",
+        "SD_WEBUI_CONFIG_DIR",
         "OLLAMA_API_KEY",
         "OLLAMA_BASE_URL",
         "OLLAMA_BENCH_MODEL",
         "OLLAMA_BENCH_PROMPT",
         "EVIDENCE_ROOT",
         "LOG_FILE",
+        "OPENWEBUI_IMAGE",
+        "OPENWEBUI_PORT",
+        "OPENWEBUI_OLLAMA_URL",
+        "OPENWEBUI_SECRET_KEY",
+        "SD_WEBUI_IMAGE",
+        "SD_WEBUI_PORT",
+        "SD_WEBUI_COMMANDLINE_ARGS",
     }
     missing = expected_keys.difference(env)
     assert not missing, f".env.example is missing keys: {sorted(missing)}"
@@ -60,6 +70,18 @@ def test_prompt_reference_exists() -> None:
 
 def test_relative_directories_are_not_absolute() -> None:
     env = load_env()
-    for key in ("MODELS_DIR", "EVIDENCE_ROOT", "LOG_FILE"):
+    for key in (
+        "MODELS_DIR",
+        "OPENWEBUI_CONFIG_DIR",
+        "SD_WEBUI_MODELS_DIR",
+        "SD_WEBUI_CONFIG_DIR",
+        "EVIDENCE_ROOT",
+        "LOG_FILE",
+    ):
         value = env[key]
         assert value.startswith("."), f"{key} should use a repository-relative path"
+
+
+def test_sd_webui_image_requires_manual_selection() -> None:
+    env = load_env()
+    assert env["SD_WEBUI_IMAGE"] == "", "SD_WEBUI_IMAGE should default to empty so the user selects a DirectML image"

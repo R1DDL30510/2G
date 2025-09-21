@@ -1,0 +1,13 @@
+services:
+  openwebui:
+    image: ${OPENWEBUI_IMAGE:-ghcr.io/open-webui/open-webui:main}
+    restart: unless-stopped
+    depends_on:
+      - ollama
+    environment:
+      - OLLAMA_BASE_URL=${OPENWEBUI_OLLAMA_URL:-http://ollama:11434}
+      - WEBUI_SECRET_KEY=${OPENWEBUI_SECRET_KEY:-changeme}
+    ports:
+      - "${OPENWEBUI_PORT:-3000}:8080"
+    volumes:
+      - ../../${OPENWEBUI_CONFIG_DIR:-openwebui-data}:/app/backend/data
